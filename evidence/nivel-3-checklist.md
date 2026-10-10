@@ -5,27 +5,28 @@ realmente (seccion 96 de la especificacion maestra).
 
 ## Transactional Outbox (Fase 12)
 
-- [ ] Fila nueva en `outbox_events` con `status=PENDING` inmediatamente despues
+- [x] Fila nueva en `outbox_events` con `status=PENDING` inmediatamente despues
       de un `POST /api/itineraries` exitoso (consultable con `psql` o cualquier
       cliente PostgreSQL contra `itinerary_db`).
-- [ ] La misma fila cambiando a `status=PUBLISHED` con `published_at` seteado,
+- [x] La misma fila cambiando a `status=PUBLISHED` con `published_at` seteado,
       unos segundos despues (el ciclo del `OutboxPublisher`).
-- [ ] Demostracion del Double Write Problem resuelto: apagar RabbitMQ
+- [x] Demostracion del Double Write Problem resuelto (`logs/outbox-double-write-2026-10-09.txt`; reveló y corrigió la pérdida de eventos, ADR-017): apagar RabbitMQ
       (`docker compose stop rabbitmq`), crear un itinerario (debe seguir
       funcionando - el POST no depende de RabbitMQ), verificar que el
       `outbox_events` queda en `PENDING`/`FAILED` con `retry_count` subiendo,
       volver a levantar RabbitMQ (`docker compose start rabbitmq`), y verificar
       que el evento se publica solo en el siguiente ciclo del scheduler sin
       perderse ni duplicarse.
-- [ ] Corrida de `OutboxPublisherTest` en verde.
+- [x] Corrida de `OutboxPublisherTest` en verde (incluye backoff).
 
 ## Pendientes de fases posteriores
 
-- [ ] Despliegue AWS (Fase 14-15): no iniciado.
+- [x] Paso 25 — infraestructura base AWS: presupuesto, OIDC, ECR, red y RDS probados (`logs/aws-paso-25-2026-10-09.txt`, ADR-017). RDS apagado tras la prueba.
+- [ ] Pasos 26-29 — ECR push, ECS, Lambda cloud y pruebas cloud.
 
 ## CI/CD (Fase 13)
 
-- [ ] Workflow `ci.yml` en verde (job `build-test`) en los 5 repositorios.
+- [x] Workflow `ci.yml` en verde (job `build-test`) en los 5 repositorios (PR #1 → `dev`).
 - [ ] Job `push-image` en verde: imagen visible en ECR con tag = SHA corto
       (requiere Fase 14: proveedor OIDC, rol IAM y repositorios ECR).
 - [ ] Job `deploy` en verde con smoke test (requiere Fase 15).

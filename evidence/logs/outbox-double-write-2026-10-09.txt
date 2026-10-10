@@ -1,0 +1,11 @@
+# Demo Transactional Outbox - Double Write Problem (2026-10-09, tras fix de backoff V3)
+# 1a corrida (antes del fix): con 10 s de broker caido el evento quedo FAILED tras 5 intentos y se perdio.
+>> docker stop rabbitmq  22:33:02
+POST con RabbitMQ caido -> 201, itinerario id=13 (la creacion no depende del broker)
+  t+10s: PENDING retry=0 proximo_intento=-
+  t+20s: PENDING retry=0 proximo_intento=-
+  t+30s: PENDING retry=0 proximo_intento=-
+  t+40s: FAILED retry=1 proximo_intento=03:33:45
+>> docker start rabbitmq  22:33:45
+outbox: PUBLISHED retry=2 published_at=03:33:51
+notification_history itinerario 13: 1 fila, status=SENT
