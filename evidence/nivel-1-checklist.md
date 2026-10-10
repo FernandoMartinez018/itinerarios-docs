@@ -18,6 +18,6 @@ automática ya pasó, pero la evidencia visual (captura o video) la toma una per
 | [x] | Filas en PostgreSQL (`airport_db`, `itinerary_db`) | `psql` en `logs/observabilidad-2026-10-09.txt` | pendiente (`psql` o DBeaver) |
 | [x] | Tests JUnit en verde (airport 89, itinerary 19, notification 5, gateway 4) | `mvn -B clean verify` | pendiente |
 | [x] | `docker compose up --build` con todos los servicios saludables | `verificar-stack` | pendiente (`docker compose ps`) |
-| [ ] | GitHub Actions CI en verde (5 repos) | **no verificado**: requiere push a GitHub | pendiente |
+| [x] | GitHub Actions CI en verde (5 repos) | `build-test` en verde en el PR #1 → `dev` de airport, itinerary, notification, gateway y frontend (2026-10-09) | pendiente (pestaña Actions) |
 | [x] | Frontend `npm test` (Vitest) y build | `verificar-stack` paso 2 | pendiente |
 | [x] | Selenium `ItineraryFullFlowE2ETest` en verde | `logs/selenium-e2e-2026-10-09.txt` | pendiente |
