@@ -1,0 +1,45 @@
+@startuml component-diagram
+title Sistema de Itinerarios Personales — Componentes (Nivel 1)
+
+package "Frontend" {
+  [Angular SPA] as Frontend
+}
+
+package "Edge" {
+  [Spring Cloud Gateway] as Gateway
+}
+
+package "Airport Context" {
+  [Airport Service] as AirportService
+  [Colombia Airport Adapter] as Adapter
+  database "airport_db" as AirportDb
+}
+
+package "Itinerary Context" {
+  [Itinerary Service] as ItineraryService
+  [Airport Service Client] as AirportClient
+  database "itinerary_db" as ItineraryDb
+}
+
+cloud "API Colombia" as ApiColombia
+
+Frontend --> Gateway : HTTPS (único punto de entrada)
+Gateway --> AirportService : /api/airports/**
+Gateway --> ItineraryService : /api/itineraries/**
+
+ItineraryService --> AirportClient
+AirportClient --> AirportService : GET /api/airports/iata/{code}\n(validación HTTP)
+
+AirportService --> AirportDb
+AirportService --> Adapter
+Adapter --> ApiColombia : GET /Airport, /Airport/search/{keyword}
+
+ItineraryService --> ItineraryDb
+
+note right of AirportClient
+  Itinerary Service NUNCA accede
+  directamente a airport_db
+  (sección 102 de la especificación maestra)
+end note
+
+@enduml

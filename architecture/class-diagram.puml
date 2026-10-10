@@ -1,0 +1,87 @@
+@startuml class-diagram
+title Diagrama de clases — Nivel 1
+
+package "airport-service" {
+  class Airport {
+    -Long id
+    -String externalId
+    -String iataCode
+    -String icaoCode
+    -String name
+    -String city
+    -String department
+    -BigDecimal latitude
+    -BigDecimal longitude
+    -boolean active
+    -OffsetDateTime createdAt
+    -OffsetDateTime updatedAt
+  }
+
+  interface AirportRepository {
+    +findByExternalId(String) Optional<Airport>
+    +findByIataCodeIgnoreCase(String) Optional<Airport>
+  }
+
+  class AirportService {
+    +findAll() List<AirportDto>
+    +findById(Long) AirportDto
+    +findByIataCode(String) AirportDto
+  }
+
+  class ColombiaAirportAdapter {
+    +findAll() List<ColombiaAirportResponse>
+    +findByIataCode(String) ColombiaAirportResponse
+    +findByKeyword(String) List<ColombiaAirportResponse>
+  }
+
+  class ColombiaAirportMapper {
+    +toEntity(ColombiaAirportResponse) Airport
+    +toDto(Airport) AirportDto
+  }
+
+  class AirportController
+
+  AirportController --> AirportService
+  AirportService --> AirportRepository
+  AirportService --> ColombiaAirportAdapter
+  AirportService --> ColombiaAirportMapper
+  AirportRepository ..> Airport
+}
+
+package "itinerary-service" {
+  class Itinerary {
+    -Long id
+    -String userName
+    -String departureAirportId
+    -String arrivalAirportId
+    -LocalDate travelDate
+    -Integer durationMinutes
+    -OffsetDateTime createdAt
+    -OffsetDateTime updatedAt
+  }
+
+  interface ItineraryRepository
+
+  class ItineraryService {
+    +findAll() List<ItineraryDto>
+    +findById(Long) ItineraryDto
+    +create(ItineraryRequest) ItineraryDto
+    +update(Long, ItineraryRequest) ItineraryDto
+    +delete(Long) void
+  }
+
+  class AirportServiceClient {
+    +validateAirport(String) AirportSummary
+  }
+
+  class ItineraryController
+
+  ItineraryController --> ItineraryService
+  ItineraryService --> ItineraryRepository
+  ItineraryService --> AirportServiceClient
+  ItineraryRepository ..> Itinerary
+}
+
+AirportServiceClient ..> AirportController : HTTP (cross-service,\nno dependencia de compilación)
+
+@enduml

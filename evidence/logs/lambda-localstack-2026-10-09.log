@@ -1,0 +1,16 @@
+﻿=== 1. Empaquetado ZIP de Lambda ===
+[OK] ZIP: 59,0 MB
+=== 2. LocalStack + SendNotificationFunction ===
+powershell :  Container localstack Running 
+En línea: 1 Carácter: 414
++ ... structure"; powershell -ExecutionPolicy Bypass -File .\serverless\dep ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ( Container localstack Running :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+[OK] LocalStack listo
+[OK] SendNotificationFunction creada (java21)
+=== 3. Invocacion con ItineraryCreatedEvent ===
+Respuesta Lambda: {"status":"PROCESSED","eventId":"589bcdf3-95d5-46dc-be27-c7e8f85c2539"}
+=== 4. Verificacion del historial via Gateway ===
+[OK] Notificacion SENT registrada por la Lambda (itinerario 943731)

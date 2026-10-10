@@ -1,0 +1,40 @@
+@startuml deployment-diagram
+title Despliegue local Nivel 1 (Docker Compose)
+
+node "Docker Compose Network: itinerarios-net" {
+
+  node "frontend (nginx:alpine)" as FrontendNode {
+    artifact "Angular SPA (build estático)" as FrontendArtifact
+  }
+
+  node "gateway (JRE 21)" as GatewayNode {
+    artifact "gateway.jar" as GatewayArtifact
+  }
+
+  node "airport-service (JRE 21)" as AirportNode {
+    artifact "airport-service.jar"
+  }
+
+  node "itinerary-service (JRE 21)" as ItineraryNode {
+    artifact "itinerary-service.jar"
+  }
+
+  database "postgres-airport" as PgAirport
+  database "postgres-itinerary" as PgItinerary
+}
+
+cloud "API Colombia (externo)" as ApiColombia
+
+FrontendNode --> GatewayNode : puerto 8080
+GatewayNode --> AirportNode : puerto 8081
+GatewayNode --> ItineraryNode : puerto 8082
+ItineraryNode --> AirportNode : puerto 8081 (validación)
+AirportNode --> PgAirport : puerto 5432 (interno) / 5433 (host)
+ItineraryNode --> PgItinerary : puerto 5432 (interno) / 5434 (host)
+AirportNode --> ApiColombia : HTTPS
+
+note bottom of FrontendNode
+  Puerto expuesto al host: 4200
+end note
+
+@enduml

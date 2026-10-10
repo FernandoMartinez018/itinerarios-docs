@@ -1,0 +1,49 @@
+# Correlation ID end-to-end (2026-10-09)
+2026-10-10T02:07:08.090Z  INFO [] 1 --- [gateway] [or-http-epoll-8] c.i.g.filter.CorrelationIdGlobalFilter   : [evid-corr-778] POST /api/itineraries -> 201 CREATED
+2026-10-10T02:07:08.075Z  INFO [evid-corr-778] 1 --- [itinerary-service] [nio-8082-exec-3] c.i.i.config.CorrelationIdFilter         : POST /api/itineraries -> 201
+2026-10-10T02:07:07.907Z  INFO [evid-corr-778] 1 --- [airport-service] [nio-8081-exec-3] c.i.airport.config.CorrelationIdFilter   : GET /api/airports/iata/BOG -> 200
+2026-10-10T02:07:07.932Z  INFO [evid-corr-778] 1 --- [airport-service] [nio-8081-exec-4] c.i.airport.config.CorrelationIdFilter   : GET /api/airports/iata/CLO -> 200
+
+# Prometheus targets
+airport-service up
+gateway up
+itinerary-service up
+notification-service up
+
+# Jaeger services
+{"data":["jaeger-all-in-one","airport-service","notification-service","itinerary-service","gateway"],"total":5,"limit":0,"offset":0,"errors":null}
+
+# Redis keys
+airports-by-iata::CLO
+airports-by-iata::BOG
+
+# RabbitMQ queues
+notification.itinerary-created.queue consumers= 1
+
+# notification_history
+ itinerary_id |     user_name     | status 
+--------------+-------------------+--------
+            1 | verificacion      | SENT
+            2 | Selenium E2E      | SENT
+       945653 | lambda-localstack | SENT
+       943731 | lambda-localstack | SENT
+            3 | corr              | SENT
+            4 | corr              | SENT
+(6 rows)
+
+
+# airport_db.airports
+ id | iata_code | icao_code |                      name                       
+----+-----------+-----------+-------------------------------------------------
+  1 | BOG       | SKBO      | Aeropuerto Internacional El Dorado
+  2 | MDE       | SKRG      | Aeropuerto Internacional José María Córdova
+  3 | CLO       | SKCL      | Aeropuerto Internacional Alfonso Bonilla Aragón
+(3 rows)
+
+# itinerary_db.itineraries
+ id | user_name | departure_airport_id | arrival_airport_id | travel_date 
+----+-----------+----------------------+--------------------+-------------
+  3 | corr      | BOG                  | MDE                | 2026-12-24
+  4 | corr      | BOG                  | CLO                | 2026-12-24
+(2 rows)
+

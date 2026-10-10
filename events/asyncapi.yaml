@@ -1,0 +1,87 @@
+asyncapi: 3.0.0
+info:
+  title: Itinerarios Personales - Eventos de Integración
+  version: 0.1.0
+  description: >
+    Contrato de eventos de integración entre Itinerary Context y Notification
+    Context. Definido en Fase 0/Nivel 1 aunque el broker (RabbitMQ) y
+    Notification Service se implementan en Nivel 2 (Fase 7-8), para que el
+    payload no cambie después de que ambos lados empiecen a construirse.
+
+servers:
+  rabbitmq:
+    host: rabbitmq:5672
+    protocol: amqp
+    description: Broker RabbitMQ (Nivel 2, itinerarios-infrastructure)
+
+channels:
+  itinerary-created:
+    address: itinerary.events.created
+    messages:
+      itineraryCreatedEvent:
+        $ref: '#/components/messages/ItineraryCreatedEvent'
+
+operations:
+  publishItineraryCreated:
+    action: send
+    channel:
+      $ref: '#/channels/itinerary-created'
+    summary: Publicado por Itinerary Service al crear exitosamente un itinerario.
+
+  consumeItineraryCreated:
+    action: receive
+    channel:
+      $ref: '#/channels/itinerary-created'
+    summary: Consumido por Notification Service.
+
+components:
+  messages:
+    ItineraryCreatedEvent:
+      payload:
+        $ref: '#/components/schemas/ItineraryCreatedEventPayload'
+
+  schemas:
+    ItineraryCreatedEventPayload:
+      type: object
+      required:
+        - eventId
+        - eventType
+        - occurredAt
+        - itineraryId
+        - userName
+        - departureAirportId
+        - arrivalAirportId
+        - travelDate
+        - durationMinutes
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+          const: ItineraryCreatedEvent
+        occurredAt:
+          type: string
+          format: date-time
+        itineraryId:
+          type: integer
+          format: int64
+        userName:
+          type: string
+        departureAirportId:
+          type: string
+          description: Código IATA del aeropuerto de salida
+        arrivalAirportId:
+          type: string
+          description: Código IATA del aeropuerto de llegada
+        travelDate:
+          type: string
+          format: date
+        durationMinutes:
+          type: integer
+          minimum: 1
+
+# Regla de compatibilidad (sección 100 de la especificación maestra):
+# cualquier cambio a este payload debe sincronizarse con: Publisher
+# (Itinerary Service), Consumer (Notification Service), tests de ambos
+# lados, y este mismo archivo.

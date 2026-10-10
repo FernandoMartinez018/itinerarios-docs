@@ -1,0 +1,29 @@
+@startuml context-map
+title Context Map — Sistema de Itinerarios Personales
+
+package "Airport Context" <<Bounded Context>> {
+  [Airport] as AirportAggregate
+}
+
+package "Itinerary Context" <<Bounded Context>> {
+  [Itinerary] as ItineraryAggregate
+}
+
+package "Notification Context" <<Bounded Context>> {
+  [Notification] as NotificationAggregate
+}
+
+cloud "API Colombia" <<Sistema externo>> as ApiColombia
+
+ItineraryAggregate ..> AirportAggregate : Customer/Supplier\n(HTTP síncrono, Itinerary es cliente)
+AirportAggregate ..> ApiColombia : Anticorruption Layer\n(ColombiaAirportAdapter)
+ItineraryAggregate ..> NotificationAggregate : Published Language\n(ItineraryCreatedEvent, async - Nivel 2)
+
+note bottom of AirportAggregate
+  Airport Context es "upstream" respecto
+  a Itinerary Context: Itinerary depende
+  de la disponibilidad de Airport Service,
+  pero no al revés.
+end note
+
+@enduml

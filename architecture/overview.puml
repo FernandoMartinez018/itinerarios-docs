@@ -1,0 +1,44 @@
+@startuml overview
+title Arquitectura general — Sistema de Itinerarios Personales (Nivel 1)
+
+skinparam componentStyle rectangle
+
+actor Usuario
+
+package "itinerarios-frontend" {
+  [Angular SPA]
+}
+
+package "itinerarios-gateway" {
+  [Spring Cloud Gateway]
+}
+
+package "itinerarios-airport-service" {
+  [Airport Service]
+}
+
+package "itinerarios-itinerary-service" {
+  [Itinerary Service]
+}
+
+cloud "API Colombia" as ApiColombia
+
+database "airport_db" as AirportDb
+database "itinerary_db" as ItineraryDb
+
+Usuario --> [Angular SPA]
+[Angular SPA] --> [Spring Cloud Gateway] : único punto de entrada
+[Spring Cloud Gateway] --> [Airport Service]
+[Spring Cloud Gateway] --> [Itinerary Service]
+[Itinerary Service] --> [Airport Service] : validación HTTP
+[Airport Service] --> AirportDb
+[Airport Service] --> ApiColombia
+[Itinerary Service] --> ItineraryDb
+
+note bottom
+  itinerarios-notification (Notification Context) se agrega en Nivel 2
+  junto con RabbitMQ, Redis y observabilidad. No forma parte de este
+  diagrama de Nivel 1.
+end note
+
+@enduml

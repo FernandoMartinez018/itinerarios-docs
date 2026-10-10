@@ -1,0 +1,43 @@
+@startuml sequence-diagram-create-itinerary
+title Crear itinerario — flujo completo (Nivel 1)
+
+actor Usuario
+participant "Angular" as FE
+participant "Gateway" as GW
+participant "Itinerary Service" as IS
+participant "Airport Service" as AS
+participant "PostgreSQL\n(itinerary_db)" as DB
+participant "API Colombia" as EXT
+
+Usuario -> FE : completa formulario de itinerario
+FE -> GW : POST /api/itineraries
+GW -> IS : POST /api/itineraries (rutea, agrega/propaga X-Correlation-ID)
+
+IS -> AS : GET /api/airports/iata/{departureAirportId}
+alt aeropuerto ya sincronizado localmente
+  AS --> IS : 200 OK (AirportDto)
+else aeropuerto no existe en airport_db todavía
+  AS -> EXT : GET /Airport/search/{keyword}
+  EXT --> AS : datos del aeropuerto
+  AS -> AS : persistir en airport_db
+  AS --> IS : 200 OK (AirportDto)
+end
+
+IS -> AS : GET /api/airports/iata/{arrivalAirportId}
+AS --> IS : 200 OK (AirportDto)
+
+IS -> DB : INSERT INTO itineraries (...)
+DB --> IS : itinerario persistido
+
+IS --> GW : 201 CREATED (ItineraryDto)
+GW --> FE : 201 CREATED
+FE --> Usuario : redirige a /itineraries, muestra el nuevo itinerario
+
+note over IS, AS
+  Si cualquiera de los dos códigos IATA no existe,
+  Airport Service responde 404, Itinerary Service lo
+  traduce a 400 (InvalidAirportException) y el flujo
+  se detiene antes de persistir nada.
+end note
+
+@enduml

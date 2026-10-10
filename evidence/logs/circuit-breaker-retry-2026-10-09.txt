@@ -1,0 +1,22 @@
+# Demo Circuit Breaker + Retry (itinerary-service -> airport-service) 2026-10-09T21:15:15-05:00
+# Config: retry 3 intentos, backoff 300ms x2 + jitter 0.5; CB ventana 10, minimo 5, umbral 50%, 15s abierto, 3 en half-open
+POST 0 (calentamiento): 201 0.355050s  | CB=closed
+>> docker stop airport-service
+POST 1: 503 7.053341s "message":"Airport Service unavailable" | CB=open
+POST 2: 503 0.036136s "message":"Airport Service no disponible (circuit breaker abierto)" | CB=open
+POST 3: 503 0.015705s "message":"Airport Service no disponible (circuit breaker abierto)" | CB=open
+POST 4: 503 0.016956s "message":"Airport Service no disponible (circuit breaker abierto)" | CB=open
+POST 5: 503 0.015641s "message":"Airport Service no disponible (circuit breaker abierto)" | CB=open
+POST 6: 503 0.017264s "message":"Airport Service no disponible (circuit breaker abierto)" | CB=open
+
+Intentos reales por request (log 'Error calling Airport Service'):
+  cb2-1: 3
+  cb2-2: 0
+  cb2-3: 0
+  cb2-4: 0
+
+>> docker start airport-service
+Tras 15s: CB=half_open
+POST 7: 201 0.156875s  | CB=half_open
+POST 8: 201 0.069958s  | CB=closed
+POST 9: 201 0.045310s  | CB=closed

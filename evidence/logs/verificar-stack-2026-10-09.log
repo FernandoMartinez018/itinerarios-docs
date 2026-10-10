@@ -1,0 +1,60 @@
+﻿**********************
+Inicio de la transcripción de Windows PowerShell
+Hora de inicio: 20261009205521
+Nombre de usuario: SERVER\fernando.martinez
+Usuario RunAs: SERVER\fernando.martinez
+Nombre de la configuración: 
+Máquina: 9G54PG4 (Microsoft Windows NT 10.0.26200.0)
+Aplicación host: C:\windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -File .\verificar-stack.ps1 -OmitirBuild -E2E -MantenerStack
+Id. de proceso: 9056
+PSVersion: 5.1.26100.9444
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.9444
+BuildVersion: 10.0.26100.9444
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+
+=== 0. Carpetas basura "{...}" ===
+[OK] Limpieza revisada
+
+=== 3. docker compose up --build ===
+
+PS>ErrorTerminación(Invoke-WebRequest): "Se ha terminado la conexión: La conexión ha terminado de forma inesperada."
+PS>ErrorTerminación(Invoke-WebRequest): "Se ha terminado la conexión: La conexión ha terminado de forma inesperada."
+PS>ErrorTerminación(Invoke-WebRequest): "Se ha terminado la conexión: La conexión ha terminado de forma inesperada."
+PS>ErrorTerminación(Invoke-WebRequest): "Se ha terminado la conexión: La conexión ha terminado de forma inesperada."
+PS>ErrorTerminación(Invoke-WebRequest): "Se ha terminado la conexión: La conexión ha terminado de forma inesperada."
+PS>ErrorTerminación(Invoke-WebRequest): "Se ha terminado la conexión: La conexión ha terminado de forma inesperada."
+PS>ErrorTerminación(Invoke-WebRequest): "Se ha terminado la conexión: La conexión ha terminado de forma inesperada."
+PS>ErrorTerminación(Invoke-WebRequest): "Se ha terminado la conexión: La conexión ha terminado de forma inesperada."
+PS>ErrorTerminación(Invoke-WebRequest): "Se ha terminado la conexión: La conexión ha terminado de forma inesperada."
+PS>ErrorTerminación(Invoke-WebRequest): "Se ha terminado la conexión: La conexión ha terminado de forma inesperada."
+PS>ErrorTerminación(Invoke-WebRequest): "Se ha terminado la conexión: La conexión ha terminado de forma inesperada."
+[OK] airport-service responde (http://localhost:8081/actuator/health)
+[OK] itinerary-service responde (http://localhost:8082/actuator/health)
+[OK] notification-service responde (http://localhost:8083/actuator/health)
+[OK] gateway responde (http://localhost:8080/actuator/health)
+[OK] frontend responde (http://localhost:4200/)
+[OK] swagger airport responde (http://localhost:8081/swagger-ui.html)
+[OK] swagger itinerary responde (http://localhost:8082/swagger-ui.html)
+
+=== 3b. Flujo de negocio por el Gateway ===
+[OK] Aeropuerto BOG: Aeropuerto Internacional El Dorado
+[OK] Itinerario creado id=1
+PS>ErrorTerminación(Invoke-RestMethod): "Error en el servidor remoto: (400) Solicitud incorrecta."
+[OK] Aeropuerto inexistente -> 400
+[OK] NotificaciÃ³n registrada (Outbox -> RabbitMQ -> Notification)
+[OK] Itinerario eliminado
+[OK] prometheus responde (http://localhost:9090/-/ready)
+[OK] jaeger responde (http://localhost:16686/)
+
+=== 4. Selenium E2E ===
+
+[FALLA] Selenium E2E
+**********************
+Fin de la transcripción de Windows PowerShell
+Hora de finalización: 20261009205750
+**********************

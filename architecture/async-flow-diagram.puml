@@ -1,0 +1,39 @@
+@startuml async-flow-diagram
+title Flujo asíncrono de notificaciones (implementado con Transactional Outbox, Fase 7/8/12)
+
+participant "Itinerary Service" as IS
+database "itinerary_db" as IDb
+participant "OutboxPublisher\n(scheduled, cada 2s)" as OP
+queue "RabbitMQ\n(exchange: itinerary.events)" as MQ
+participant "Notification Service" as NS
+database "notification_db" as NDb
+
+group Transacción PostgreSQL única
+  IS -> IDb : INSERT itineraries
+  IS -> IDb : INSERT outbox_events (status=PENDING)
+end
+
+note right of IS
+  Ambas escrituras se confirman o se
+  revierten juntas (ADR-008). El evento
+  nunca se pierde silenciosamente aunque
+  RabbitMQ esté caído en este momento.
+end note
+
+OP -> IDb : SELECT outbox_events WHERE status IN (PENDING, FAILED)
+OP -> MQ : publicar ItineraryCreatedEvent
+alt publicación exitosa
+  OP -> IDb : UPDATE outbox_events SET status=PUBLISHED
+else falla (RabbitMQ no disponible)
+  OP -> IDb : UPDATE outbox_events SET status=FAILED, retry_count += 1
+  note right of OP
+    Se reintentará en el siguiente ciclo
+    programado, hasta MAX_RETRY_COUNT (5).
+  end note
+end
+
+MQ -> NS : consumir ItineraryCreatedEvent
+NS -> NS : procesar (simular envío de notificación)
+NS -> NDb : guardar en notification_history
+
+@enduml

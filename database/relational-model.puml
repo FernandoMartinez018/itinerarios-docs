@@ -1,0 +1,55 @@
+@startuml relational-model
+title Modelo relacional — Nivel 1 (tres bases independientes, sin FKs cruzadas)
+
+package "airport_db" {
+  entity airports {
+    * id : BIGSERIAL <<PK>>
+    --
+    * external_id : VARCHAR(50) <<unique>>
+    iata_code : VARCHAR(10) <<unique>>
+    icao_code : VARCHAR(10) <<unique>>
+    * name : VARCHAR(150)
+    * city : VARCHAR(100)
+    department : VARCHAR(100)
+    latitude : DECIMAL(10,7)
+    longitude : DECIMAL(10,7)
+    * active : BOOLEAN
+    * created_at : TIMESTAMPTZ
+    * updated_at : TIMESTAMPTZ
+  }
+}
+
+package "itinerary_db" {
+  entity itineraries {
+    * id : BIGSERIAL <<PK>>
+    --
+    * user_name : VARCHAR(150)
+    * departure_airport_id : VARCHAR(50)
+    * arrival_airport_id : VARCHAR(50)
+    * travel_date : DATE
+    * duration_minutes : INTEGER <<CHECK > 0>>
+    * created_at : TIMESTAMPTZ
+    * updated_at : TIMESTAMPTZ
+  }
+}
+
+package "notification_db (Nivel 2)" {
+  entity notification_history {
+    * id : BIGSERIAL <<PK>>
+    --
+    * event_id : UUID
+    * itinerary_id : BIGINT
+    * user_name : VARCHAR(150)
+    * notification_type : VARCHAR(50)
+    * message : TEXT
+    * status : VARCHAR(30)
+    * created_at : TIMESTAMPTZ
+    processed_at : TIMESTAMPTZ
+    error_message : TEXT
+  }
+}
+
+itineraries ..> airports : "departure_airport_id / arrival_airport_id\nreferencia lógica por IATA code\n(SIN foreign key real - bases distintas)"
+notification_history ..> itineraries : "itinerary_id\nreferencia lógica\n(SIN foreign key real)"
+
+@enduml
