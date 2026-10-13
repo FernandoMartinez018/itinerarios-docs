@@ -1,0 +1,29 @@
+# Paso 26 - Push de imagenes a ECR via GitHub Actions + OIDC (2026-10-13)
+# Trust policy con sub inmutable: repo:<owner>@<ownerId>/<repo>@*:environment:production
+
+== itinerarios-airport-service (main @ c101a0d)
+c101a0d,latest	163601311	2026-10-13T09:25:41.685000-05:00	None
+null
+
+== itinerarios-itinerary-service (main @ 9781470)
+latest,9781470	158359770	2026-10-13T09:25:44.530000-05:00	None
+null
+
+== itinerarios-notification (main @ 2b33f95)
+2b33f95,latest	157645745	2026-10-13T09:25:47.626000-05:00	None
+null
+
+== itinerarios-gateway (main @ d0e75a9)
+d0e75a9,latest	143194392	2026-10-13T09:25:44.202000-05:00	None
+null
+
+== itinerarios-frontend (main @ 0f4b38d)
+latest,0f4b38d	27844617	2026-10-13T09:25:12.641000-05:00	None
+null
+
+## Limpieza (USD 0): imagenes borradas tras verificar
+itinerarios-airport-service      imagenes restantes: 0
+itinerarios-itinerary-service    imagenes restantes: 0
+itinerarios-notification         imagenes restantes: 0
+itinerarios-gateway              imagenes restantes: 0
+itinerarios-frontend             imagenes restantes: 0

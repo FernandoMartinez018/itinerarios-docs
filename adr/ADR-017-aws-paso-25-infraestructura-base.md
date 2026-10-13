@@ -62,3 +62,20 @@ de AWS Pricing (2026-10-09):
 ## Estado que queda en AWS (USD 0)
 Stacks `itinerarios-budget`, `itinerarios-github-oidc`, `itinerarios-ecr` (vacío) e
 `itinerarios-network` (sin NAT, sin ENIs). RDS se recrea con `04-rds.yaml` cuando se necesite.
+
+## Addendum — Paso 26: push de imágenes a ECR (2026-10-13)
+
+- Código promovido `feature → dev → main` en los 6 repos (PR #1 y #2), con CI en verde en cada PR.
+- En los 5 repos de código: environment `production` y variables `AWS_ACCOUNT_ID`, `AWS_REGION`,
+  `AWS_ROLE_NAME` (con `gh`).
+- **Primer intento fallido:** `Not authorized to perform sts:AssumeRoleWithWebIdentity`. GitHub ahora
+  emite el claim `sub` **inmutable** (`use_immutable_subject: true`):
+  `repo:FernandoMartinez018@136218670/itinerarios-airport-service@1362085165:environment:production`.
+  `01-github-oidc.yaml` pasa a `repo:${GitHubOwner}@${GitHubOwnerId}/<repo>@*:environment:production`.
+  Fijar el ownerId impide que otra cuenta con el mismo nombre asuma el rol; el repoId va con
+  comodín porque solo el dueño crea repos bajo su cuenta.
+- **Resultado:** `push-image` en verde en los 5 repos; imágenes en ECR con tag = SHA corto de `main`
+  y `latest` (≈ 650 MB en total). Se **borraron tras verificar** (decisión de costo: USD 0) y se
+  regeneran con el próximo push a `main`. Evidencia: `evidence/logs/aws-paso-26-ecr-2026-10-13.txt`.
+- Pendiente menor: el escaneo básico de ECR quedó en `None` pese a `ScanOnPush`; no se activa
+  Inspector (escaneo avanzado, con costo).

@@ -22,12 +22,13 @@ realmente (seccion 96 de la especificacion maestra).
 ## Pendientes de fases posteriores
 
 - [x] Paso 25 — infraestructura base AWS: presupuesto, OIDC, ECR, red y RDS probados (`logs/aws-paso-25-2026-10-09.txt`, ADR-017). RDS apagado tras la prueba.
-- [ ] Pasos 26-29 — ECR push, ECS, Lambda cloud y pruebas cloud.
+- [x] Paso 26 — push a ECR vía OIDC (ADR-017 addendum).
+- [ ] Pasos 27-29 — ECS, Lambda cloud y pruebas cloud.
 
 ## CI/CD (Fase 13)
 
 - [x] Workflow `ci.yml` en verde (job `build-test`) en los 5 repositorios (PR #1 → `dev`).
-- [ ] Job `push-image` en verde: imagen visible en ECR con tag = SHA corto
-      (requiere Fase 14: proveedor OIDC, rol IAM y repositorios ECR).
+- [x] Job `push-image` en verde: imagen en ECR con tag = SHA corto en los 5 repos
+      (`logs/aws-paso-26-ecr-2026-10-13.txt`; imágenes borradas después por costo).
 - [ ] Job `deploy` en verde con smoke test (requiere Fase 15).
 - [ ] Demostracion de rollback: re-desplegar el tag SHA anterior.
