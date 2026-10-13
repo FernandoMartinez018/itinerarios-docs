@@ -25,7 +25,7 @@ realmente (seccion 96 de la especificacion maestra).
 - [x] Paso 26 — push a ECR vía OIDC (ADR-017 addendum).
 - [x] Paso 27 — microservicios en ECS Fargate: flujo completo con notificación vía RabbitMQ en AWS (`logs/aws-paso-27-ecs-2026-10-13.txt`). Apagado tras la prueba.
 - [x] Paso 28 — Lambda cloud: SendNotificationFunction procesa el evento en AWS e idempotencia verificada (`logs/aws-paso-28-lambda-2026-10-13.txt`). Apagado tras la prueba.
-- [ ] Paso 29 — pruebas cloud integradas.
+- [x] Paso 29 — pruebas cloud integradas: 13/13 OK con `aws/run-cloud-tests.sh` (`logs/aws-paso-29-cloud-tests-2026-10-13.txt`). Apagado automático verificado.
 
 ## CI/CD (Fase 13)
 

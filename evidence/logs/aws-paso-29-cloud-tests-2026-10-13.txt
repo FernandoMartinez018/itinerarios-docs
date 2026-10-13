@@ -1,0 +1,26 @@
+# Paso 29 - Pruebas cloud integradas (2026-10-13 12:49:19)
+== Encendido 12:49:24
+Rangos admin detectados: 2
+Todo encendido y listo 13:10:10
+
+== Pruebas
+  [OK]    1. Gateway health UP
+  [OK]    2. BOG = El Dorado con coordenadas en Colombia
+  [OK]    3a. POST valido -> 201 (id=1)
+  [OK]    3b. Aeropuerto inexistente -> 400
+  [OK]    3c. durationMinutes=0 -> 400
+  [OK]    4a. Outbox PUBLISHED
+  [OK]    4b. Notificacion SENT via RabbitMQ en ECS
+  [OK]    5. Lambda con el mismo eventId: PROCESSED y sigue 1 fila (idempotencia ECS+Lambda)
+  [OK]    6a. Airport caido -> 503 y breaker abierto falla rapido (341 ms)
+  [OK]    6b. Airport de vuelta -> breaker se recupera y POST 201
+  [OK]    7. Correlation ID cloud-29-001 en gateway, itinerary y airport [airport-service gateway itinerary-service ]
+  [OK]    8a. PUT -> 200
+  [OK]    8b. DELETE -> 204
+Pruebas terminadas 14:13:43
+
+== Apagado 14:13:43 (siempre se ejecuta)
+== Inventario final (vacio = OK) 14:36:53
+RDS=[] ECS=[] Lambda=[] S3=[]
+IPv4=[] SSM=[] Secrets=[] SG-externo=[]
+Resultado: 13 OK, 0 fallas

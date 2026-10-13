@@ -136,3 +136,24 @@ Prueba (encendido ≈ 10:22–10:45):
 
 Mejora sugerida: inicializar el contexto de Spring en la fase *init* y activar **SnapStart** (Java,
 sin costo extra) para bajar el cold start de ~19 s a ~1-2 s.
+
+## Addendum — Paso 29: pruebas cloud integradas (2026-10-13)
+
+`aws/run-cloud-tests.sh` enciende todo (red con AdminCidr, SSM, RDS + init, imágenes vía CI, ECS,
+Lambda), ejecuta 13 pruebas y **apaga siempre** (`trap EXIT`) con un inventario final.
+
+Resultado del intento 3: **13 OK, 0 fallas** (`evidence/logs/aws-paso-29-cloud-tests-2026-10-13.txt`):
+health; BOG = El Dorado con coordenadas en Colombia; 201/400/400; Outbox PUBLISHED; notificación SENT
+vía RabbitMQ en ECS; Lambda con el mismo eventId sin duplicar (idempotencia compartida ECS + Lambda);
+Airport caído → 503 en 341 ms con el breaker abierto → se recupera y vuelve a 201; Correlation ID en
+gateway, itinerary y airport; PUT 200 y DELETE 204.
+
+Errores del script corregidos en el camino (los intentos 1 y 2 se conservan como evidencia):
+1. `curl | grep -q` con `pipefail`: el SIGPIPE de curl marcaba falla con la respuesta correcta.
+2. Las pruebas empezaban con el Gateway UP pero los servicios aún arrancando (los fallos tempranos abrían el breaker): ahora esperan 200 de airport, itinerary y notification.
+3. RDS no se puede borrar mientras ECS/Lambda importan su endpoint: el apagado ahora es secuencial (el intento 1 dejó RDS encendido ~50 min de más).
+4. La red del usuario balancea entre **dos ISP** (HTTPS y TCP salen por enlaces distintos): `AdminCidr2` en 03/05 y muestreo de IPs de salida (aborta sin encender nada si hay más de 2).
+5. `filter-log-events` sin ventana de tiempo, con logs en vivo, pagina por `nextToken` ~60 min: ahora usa `--start-time/--end-time` y `--max-items`.
+
+Costo de las tres corridas ≈ USD 0,50 en total (la mayor parte, por las esperas de los errores 3 y 5).
+Duración esperada de una corrida sana: ≈ 25 min encendido + ≈ 20 min de apagado (ENIs de Lambda).
