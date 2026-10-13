@@ -1,0 +1,22 @@
+# Paso 31 - Alertas Prometheus en vivo (stack local, 2026-10-13 15:14:24)
+Inicio: ninguna
+>> docker stop airport-service 15:14:25
+Breaker: 1.0
+t+30s: CircuitBreakerOpen(itinerary-service)=pending, ServiceDown(airport-service)=pending
+t+60s: ServiceDown(airport-service)=pending
+t+90s: ServiceDown(airport-service)=firing
+t+120s: ServiceDown(airport-service)=firing
+>> docker start airport-service 15:16:36
+Tras recuperar: ninguna
+
+# Repeticion tras corregir CircuitBreakerOpen (open|half_open) 15:21:01
+Inicio: ninguna
+>> docker stop airport-service
+POSTs: 503 503 503
+t+20s: ninguna
+t+40s: CircuitBreakerOpen(airportService)=pending, HighServerErrorRate()=pending, HighServerErrorRate()=pending, ServiceDown(airport-service)=pending
+t+60s: CircuitBreakerOpen(airportService)=firing, HighServerErrorRate()=pending, HighServerErrorRate()=pending, ServiceDown(airport-service)=pending
+t+80s: CircuitBreakerOpen(airportService)=firing, HighServerErrorRate()=pending, HighServerErrorRate()=pending, ServiceDown(airport-service)=pending
+>> docker start airport-service
+POSTs tras recuperar: 201 201 201 201
+Final: HighServerErrorRate()=firing, HighServerErrorRate()=firing
