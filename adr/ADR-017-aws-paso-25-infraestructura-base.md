@@ -79,3 +79,33 @@ Stacks `itinerarios-budget`, `itinerarios-github-oidc`, `itinerarios-ecr` (vací
   regeneran con el próximo push a `main`. Evidencia: `evidence/logs/aws-paso-26-ecr-2026-10-13.txt`.
 - Pendiente menor: el escaneo básico de ECR quedó en `None` pese a `ScanOnPush`; no se activa
   Inspector (escaneo avanzado, con costo).
+
+## Addendum — Paso 27: microservicios en ECS Fargate (2026-10-13)
+
+Plantilla `05-ecs.yaml` (cfn-lint OK). Diseño para encender, probar y borrar:
+
+| Pieza | Decisión | Motivo |
+|---|---|---|
+| Cómputo | 1 servicio ECS Fargate por microservicio (§88): gateway, airport, itinerary, notification (0,25 vCPU / 1 GB) | Mínimo que arranca Spring Boot |
+| Mensajería/cache | RabbitMQ y Redis como tareas Fargate (0,25 vCPU / 0,5 GB), imágenes de ECR Public | Amazon MQ ≈ USD 100/mes; ECR Public evita el rate limit anónimo de Docker Hub |
+| Descubrimiento | Cloud Map DNS privado `*.itinerarios.local` | Sin sidecars; Route 53 no cobra zonas borradas antes de 12 h |
+| Secretos | SSM Parameter Store SecureString `/itinerarios/*` (gratis), leídos por el execution role | Secrets Manager cobra por secreto |
+| Acceso | Solo el Gateway acepta 8080 y solo desde AdminCidr; sin ALB ni NAT | Prueba barata; ALB queda para un despliegue permanente |
+| Perfil | `SPRING_PROFILES_ACTIVE=prod` (sin defaults de credenciales) | §67 |
+| Observabilidad | Logs a CloudWatch (retención 1 día); agente OTel desactivado (no hay collector en AWS aún) | §85: la observabilidad cloud va al final |
+
+Costo estimado encendido ≈ USD 0,13/h (Fargate ≈ 0,08, IPv4 públicas ≈ 0,03, RDS 0,016).
+
+**Prueba (encendido 09:40–10:15 aprox.):**
+- Imágenes regeneradas en ECR re-ejecutando el CI de `main` (push-image por OIDC).
+- RDS + `init` de las 3 bases (con Python/psycopg porque Docker Desktop no arrancaba; misma lógica que `init-rds-databases.sql`).
+- 6 servicios ECS 1/1 en ≈ 7 min.
+- Vía la IP pública del Gateway: health UP; `GET /api/airports/iata/BOG` 200 (El Dorado, coordenadas corregidas);
+  `POST /api/itineraries` 201; aeropuerto inexistente 400; **notificación generada vía RabbitMQ en ECS**;
+  listar 200; borrar 204.
+- Correlation ID `aws-ecs-001` visible en CloudWatch en gateway, itinerary y airport (§63).
+- Evidencia: `evidence/logs/aws-paso-27-ecs-2026-10-13.txt`. Después se borró ECS, RDS, los parámetros SSM y las imágenes ECR, y se retiró AdminCidr.
+
+**Pendiente para un despliegue permanente:** ALB delante del Gateway, frontend con URL de Gateway
+inyectada en arranque (hoy `localhost:8080` en el bundle), job `deploy` del CI (task-definition.json y
+`DEPLOY_ENABLED`), OTel → CloudWatch/X-Ray.

@@ -1,0 +1,21 @@
+# Paso 27 - Microservicios en ECS Fargate, prueba via Gateway (2026-10-13)
+Gateway health: {"groups":["liveness","readiness"],"status":"UP"}
+GET /api/airports/iata/BOG -> 200 Aeropuerto Internacional El Dorado lat=4.6984024208816 lon=-74.160003210556
+POST /api/itineraries -> 201 {"id":1,"userName":"aws-ecs","departureAirportId":"BOG","arrivalAirportId":"MDE","travelDate":"2026-12-20","durationMinu
+POST aeropuerto inexistente -> 400
+GET /api/notifications/itinerary/1 -> [{"id":1,"eventId":"936a505d-8c7f-4b9d-9907-fb64aa988479","itineraryId":1,"userName":"aws-ecs","notificationType":"ITINERARY_CREATED","message":"Tu itinerario de BOG a MDE para el 2026-12-20 fue cread
+GET /api/itineraries -> 200; DELETE /api/itineraries/1 -> 204
+Desde fuera del AdminCidr el Gateway no es accesible (SG: 8080 solo AdminCidr).
+== CloudWatch: correlation aws-ecs-001
+airport-service	2026-10-13T14:57:53.905Z  INFO [aws-ecs-001] 1 --- [airport-service] [nio-8081-exec-1] c.i.airport.config.CorrelationIdFilter   : GET /api/airports/iata/BOG -> 200
+airport-service	2026-10-13T14:57:54.348Z  INFO [aws-ecs-001] 1 --- [airport-service] [nio-8081-exec-3] c.i.airport.config.CorrelationIdFilter   : GET /api/airports/iata/MDE -> 200
+itinerary-service	2026-10-13T14:57:55.695Z  INFO [aws-ecs-001] 1 --- [itinerary-service] [nio-8082-exec-1] c.i.i.config.CorrelationIdFilter         : POST /api/itineraries -> 201
+gateway	2026-10-13T14:57:55.784Z  INFO [] 1 --- [gateway] [or-http-epoll-3] c.i.g.filter.CorrelationIdGlobalFilter   : [aws-ecs-001] POST /api/itineraries -> 201 CREATED
+
+## Inventario final tras apagar (vacio = OK) 10:11
+RDS=[] ECS=[] EC2=[]
+IPv4=[] ENIs=[0] NAT=[] ELB=[]
+CloudMap=[] Route53Zones=[] Logs=[]
+Secrets=[] SSM=[] ECRimgs=[0 0 0 0 0 ]
+Stacks=[itinerarios-network	itinerarios-ecr	itinerarios-github-oidc	itinerarios-budget]
+SG ingreso externo=[]
