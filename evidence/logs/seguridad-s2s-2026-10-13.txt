@@ -1,0 +1,20 @@
+# Seguridad S2S (OAuth2 Client Credentials + Keycloak) - stack local 2026-10-13 16:11:04
+Tokens: emitidos por Keycloak en la red interna (iss=http://keycloak:8080/realms/itinerarios)
+
+## Llamadas directas a los servicios (sin pasar por el Gateway)
+airport      GET /api/airports/iata/BOG  sin token            -> 401
+airport      GET ...                      token falsificado    -> 401
+airport      GET ...                      token itinerary-svc  -> 200
+itinerary    GET /api/itineraries         sin token            -> 401
+itinerary    POST /api/itineraries        token itinerary-svc (solo airport.read) -> 403
+itinerary    GET /api/itineraries         token gateway        -> 200
+notification GET /api/notifications       sin token            -> 401
+notification GET /api/notifications       token itinerary-svc  -> 403
+actuator     GET /actuator/health (8081/8082/8083) sin token   -> 200 200 200
+
+## Por el Gateway (el frontend no cambia)
+GET /api/itineraries sin token                         -> 200
+GET /api/itineraries con Authorization falso del cliente -> 200 (el Gateway lo reemplaza)
+
+Cuerpo 401 (JSON seccion 64):
+{"timestamp":"2026-10-13T21:11:06.299706588Z","status":401,"error":"UNAUTHORIZED","message":"Missing or invalid bearer token","path":"/api/itineraries","correlationId":"s2s-401"}
