@@ -1,0 +1,25 @@
+# Paso 28 - SendNotificationFunction en AWS Lambda (java21, VPC) 2026-10-13
+Evento: itineraryId=707702 eventId=acfa32f9-2634-467a-b236-4d7fa0de13d0
+Invocacion 1 (cold start): 200 None
+ respuesta={"status":"PROCESSED","eventId":"acfa32f9-2634-467a-b236-4d7fa0de13d0"} (21s)
+Invocacion 2 (mismo evento): 200 None
+ respuesta={"status":"PROCESSED","eventId":"acfa32f9-2634-467a-b236-4d7fa0de13d0"} (2s)
+notification_history para itinerario 707702: 1 fila(s) -> [('aws-lambda', 'SENT')]
+flyway: 1:true 2:true
+Logs CloudWatch:
+
+aws: [ERROR]: An error occurred (InvalidParameterException) when calling the FilterLogEvents operation: 1 validation error detected: Value at 'logGroupName' failed to satisfy constraint: Member must satisfy regular expression pattern: [\.\-_/#A-Za-z0-9]+
+Logs CloudWatch (/aws/lambda/SendNotificationFunction):
+  Simulando envío de notificación a aws-lambda
+  Billed Duration: 18697 ms
+  Max Memory Used: 364 MB
+  Init Duration: 211.76 ms
+  duplicado ignorado
+  Billed Duration: 8 ms
+  Max Memory Used: 364 MB
+
+## Inventario final tras apagar (vacio = OK) 10:59
+Lambda=[] RDS=[] S3=[]
+ENIs=[0] IPv4=[] ECS=[] NAT=[]
+Secrets=[] SSM=[] Logs=[]
+Stacks=[itinerarios-network	itinerarios-ecr	itinerarios-github-oidc	itinerarios-budget] SG externo=[]

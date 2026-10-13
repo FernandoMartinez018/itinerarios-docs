@@ -24,7 +24,8 @@ realmente (seccion 96 de la especificacion maestra).
 - [x] Paso 25 — infraestructura base AWS: presupuesto, OIDC, ECR, red y RDS probados (`logs/aws-paso-25-2026-10-09.txt`, ADR-017). RDS apagado tras la prueba.
 - [x] Paso 26 — push a ECR vía OIDC (ADR-017 addendum).
 - [x] Paso 27 — microservicios en ECS Fargate: flujo completo con notificación vía RabbitMQ en AWS (`logs/aws-paso-27-ecs-2026-10-13.txt`). Apagado tras la prueba.
-- [ ] Pasos 28-29 — Lambda cloud y pruebas cloud.
+- [x] Paso 28 — Lambda cloud: SendNotificationFunction procesa el evento en AWS e idempotencia verificada (`logs/aws-paso-28-lambda-2026-10-13.txt`). Apagado tras la prueba.
+- [ ] Paso 29 — pruebas cloud integradas.
 
 ## CI/CD (Fase 13)
 

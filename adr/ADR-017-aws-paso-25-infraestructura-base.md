@@ -109,3 +109,30 @@ Costo estimado encendido ≈ USD 0,13/h (Fargate ≈ 0,08, IPv4 públicas ≈ 0,
 **Pendiente para un despliegue permanente:** ALB delante del Gateway, frontend con URL de Gateway
 inyectada en arranque (hoy `localhost:8080` en el bundle), job `deploy` del CI (task-definition.json y
 `DEPLOY_ENABLED`), OTel → CloudWatch/X-Ray.
+
+## Addendum — Paso 28: Notification como AWS Lambda (2026-10-13)
+
+Plantilla `06-lambda.yaml` (cfn-lint OK): `SendNotificationFunction`, runtime `java21`, 1024 MB,
+timeout 120 s, dentro de la VPC con el SG de la app (llega a RDS sin abrirlo, §57), rol con solo
+`AWSLambdaVPCAccessExecutionRole`, logs con retención de 1 día.
+
+Decisiones:
+- **ZIP vía S3** (clases + `lib/*.jar`, 61,9 MB, construido con Maven local): supera los 50 MB de
+  subida directa. La imagen de contenedor (`public.ecr.aws/lambda/java:21`, §58) queda como
+  alternativa; hoy Docker Desktop no arranca en la máquina de desarrollo.
+- **Password de la base:** parámetro `NoEcho` leído de SSM al desplegar → variable de entorno cifrada
+  por Lambda. Concesión de prueba; para producción usar la *AWS Parameters and Secrets Lambda
+  Extension* con un VPC endpoint (≈ USD 0,02/h) y leerla en runtime.
+- Invocación directa con un `ItineraryCreatedEvent` (como en LocalStack, §32: RabbitMQ → Lambda no
+  se simula; la arquitectura conceptual se mantiene).
+
+Prueba (encendido ≈ 10:22–10:45):
+- Invocación 1 (cold start): `PROCESSED`, 21 s de pared, 18,7 s facturados (Spring arranca dentro del handler).
+- Invocación 2 con **el mismo evento**: `PROCESSED`, 8 ms facturados, log "duplicado ignorado".
+- `notification_history`: **1 sola fila SENT** (idempotencia, ADR-015) y Flyway V1+V2 aplicados en RDS.
+- Memoria máxima usada: 364 MB.
+- Evidencia: `evidence/logs/aws-paso-28-lambda-2026-10-13.txt`. Después se borró Lambda, el bucket S3,
+  RDS y los parámetros SSM, y se retiró AdminCidr.
+
+Mejora sugerida: inicializar el contexto de Spring en la fase *init* y activar **SnapStart** (Java,
+sin costo extra) para bajar el cold start de ~19 s a ~1-2 s.
