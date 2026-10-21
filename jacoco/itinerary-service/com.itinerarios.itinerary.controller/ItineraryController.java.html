@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ItineraryController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">itinerary-service</a> &gt; <a href="index.source.html" class="el_package">com.itinerarios.itinerary.controller</a> &gt; <span class="el_source">ItineraryController.java</span></div><h1>ItineraryController.java</h1><pre class="source lang-java linenums">package com.itinerarios.itinerary.controller;
+
+import com.itinerarios.itinerary.dto.ItineraryDto;
+import com.itinerarios.itinerary.dto.ItineraryRequest;
+import com.itinerarios.itinerary.dto.PageResponse;
+import com.itinerarios.itinerary.service.ItineraryService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping(&quot;/api/itineraries&quot;)
+@Tag(name = &quot;Itineraries&quot;, description = &quot;CRUD de itinerarios personales de viaje&quot;)
+public class ItineraryController {
+
+    private final ItineraryService itineraryService;
+
+<span class="fc" id="L25">    public ItineraryController(ItineraryService itineraryService) {</span>
+<span class="fc" id="L26">        this.itineraryService = itineraryService;</span>
+<span class="fc" id="L27">    }</span>
+
+    // Versionado por header API-Version (spring.mvc.apiversion.*): sin header = v1, el contrato
+    // original que usan el frontend y los clientes existentes.
+    @GetMapping(version = &quot;1&quot;)
+    @Operation(summary = &quot;Lista todos los itinerarios (v1, arreglo completo)&quot;)
+    public ResponseEntity&lt;List&lt;ItineraryDto&gt;&gt; findAll() {
+<span class="fc" id="L34">        return ResponseEntity.ok(itineraryService.findAll());</span>
+    }
+
+    @GetMapping(version = &quot;2&quot;)
+    @Operation(summary = &quot;Lista paginada de itinerarios (v2, header API-Version: 2)&quot;)
+    public ResponseEntity&lt;PageResponse&lt;ItineraryDto&gt;&gt; findPage(
+            @RequestParam(defaultValue = &quot;0&quot;) @Min(0) int page,
+            @RequestParam(defaultValue = &quot;20&quot;) @Min(1) @Max(100) int size) {
+<span class="fc" id="L42">        return ResponseEntity.ok(itineraryService.findPage(page, size));</span>
+    }
+
+    @GetMapping(&quot;/{id}&quot;)
+    @Operation(summary = &quot;Obtiene un itinerario por id&quot;)
+    public ResponseEntity&lt;ItineraryDto&gt; findById(@PathVariable Long id) {
+<span class="nc" id="L48">        return ResponseEntity.ok(itineraryService.findById(id));</span>
+    }
+
+    @PostMapping
+    @Operation(summary = &quot;Crea un itinerario, validando aeropuertos contra Airport Service&quot;)
+    public ResponseEntity&lt;ItineraryDto&gt; create(@Valid @RequestBody ItineraryRequest request) {
+<span class="fc" id="L54">        ItineraryDto created = itineraryService.create(request);</span>
+<span class="fc" id="L55">        return ResponseEntity.status(HttpStatus.CREATED).body(created);</span>
+    }
+
+    @PutMapping(&quot;/{id}&quot;)
+    @Operation(summary = &quot;Actualiza un itinerario existente&quot;)
+    public ResponseEntity&lt;ItineraryDto&gt; update(@PathVariable Long id, @Valid @RequestBody ItineraryRequest request) {
+<span class="fc" id="L61">        return ResponseEntity.ok(itineraryService.update(id, request));</span>
+    }
+
+    @DeleteMapping(&quot;/{id}&quot;)
+    @Operation(summary = &quot;Elimina un itinerario&quot;)
+    public ResponseEntity&lt;Void&gt; delete(@PathVariable Long id) {
+<span class="fc" id="L67">        itineraryService.delete(id);</span>
+<span class="fc" id="L68">        return ResponseEntity.noContent().build();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

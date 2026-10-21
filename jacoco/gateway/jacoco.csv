@@ -1,0 +1,8 @@
+GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
+gateway,com.itinerarios.gateway,GatewayApplication,8,0,0,0,3,0,2,0,2,0
+gateway,com.itinerarios.gateway.config,SecurityConfig,32,0,0,0,10,0,4,0,4,0
+gateway,com.itinerarios.gateway.config,CorsConfig,0,43,0,0,0,10,0,2,0,2
+gateway,com.itinerarios.gateway.filter,ServiceTokenGlobalFilter,4,99,4,4,1,20,5,10,1,10
+gateway,com.itinerarios.gateway.filter,SimpleRateLimitGlobalFilter.Window,0,9,0,0,0,4,0,1,0,1
+gateway,com.itinerarios.gateway.filter,SimpleRateLimitGlobalFilter,3,82,3,7,2,18,4,6,1,4
+gateway,com.itinerarios.gateway.filter,CorrelationIdGlobalFilter,99,0,6,0,19,0,9,0,6,0

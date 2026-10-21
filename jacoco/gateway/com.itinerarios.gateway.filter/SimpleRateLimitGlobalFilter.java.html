@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SimpleRateLimitGlobalFilter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">gateway</a> &gt; <a href="index.source.html" class="el_package">com.itinerarios.gateway.filter</a> &gt; <span class="el_source">SimpleRateLimitGlobalFilter.java</span></div><h1>SimpleRateLimitGlobalFilter.java</h1><pre class="source lang-java linenums">package com.itinerarios.gateway.filter;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.gateway.filter.GatewayFilterChain;
+import org.springframework.cloud.gateway.filter.GlobalFilter;
+import org.springframework.core.Ordered;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Component;
+import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Mono;
+
+import java.net.InetSocketAddress;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+
+/**
+ * Rate limiting básico (sección 33 y 73) para Nivel 1: ventana fija de 1
+ * segundo, contador en memoria por IP de origen.
+ *
+ * IMPORTANTE: esta implementación NO es apta para un despliegue multi-instancia
+ * (cada réplica del Gateway tendría su propio contador). Es intencionalmente
+ * simple para Nivel 1; en Nivel 2, cuando Redis esté disponible (sección 27),
+ * debe migrarse al RequestRateLimiter oficial de Spring Cloud Gateway respaldado
+ * por Redis, que sí es apto para múltiples instancias.
+ */
+@Component
+public class SimpleRateLimitGlobalFilter implements GlobalFilter, Ordered {
+
+    private final int maxRequestsPerSecond;
+<span class="fc" id="L30">    private final ConcurrentHashMap&lt;String, Window&gt; windows = new ConcurrentHashMap&lt;&gt;();</span>
+
+    public SimpleRateLimitGlobalFilter(
+<span class="fc" id="L33">            @Value(&quot;${gateway.rate-limit.requests-per-second:20}&quot;) int maxRequestsPerSecond) {</span>
+<span class="fc" id="L34">        this.maxRequestsPerSecond = maxRequestsPerSecond;</span>
+<span class="fc" id="L35">    }</span>
+
+    @Override
+    public Mono&lt;Void&gt; filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+<span class="fc" id="L39">        String clientIp = resolveClientIp(exchange);</span>
+<span class="fc" id="L40">        long currentSecond = System.currentTimeMillis() / 1000;</span>
+
+<span class="fc" id="L42">        Window window = windows.compute(clientIp, (ip, existing) -&gt; {</span>
+<span class="pc bpc" id="L43" title="1 of 4 branches missed.">            if (existing == null || existing.second != currentSecond) {</span>
+<span class="fc" id="L44">                return new Window(currentSecond, new AtomicInteger(1));</span>
+            }
+<span class="fc" id="L46">            existing.count.incrementAndGet();</span>
+<span class="fc" id="L47">            return existing;</span>
+        });
+
+<span class="fc bfc" id="L50" title="All 2 branches covered.">        if (window.count.get() &gt; maxRequestsPerSecond) {</span>
+<span class="fc" id="L51">            exchange.getResponse().setStatusCode(HttpStatus.TOO_MANY_REQUESTS);</span>
+<span class="fc" id="L52">            return exchange.getResponse().setComplete();</span>
+        }
+
+<span class="fc" id="L55">        return chain.filter(exchange);</span>
+    }
+
+    private String resolveClientIp(ServerWebExchange exchange) {
+<span class="fc" id="L59">        InetSocketAddress remoteAddress = exchange.getRequest().getRemoteAddress();</span>
+<span class="pc bpc" id="L60" title="2 of 4 branches missed.">        return remoteAddress != null &amp;&amp; remoteAddress.getAddress() != null</span>
+<span class="fc" id="L61">                ? remoteAddress.getAddress().getHostAddress()</span>
+<span class="nc" id="L62">                : &quot;unknown&quot;;</span>
+    }
+
+    @Override
+    public int getOrder() {
+<span class="nc" id="L67">        return Ordered.HIGHEST_PRECEDENCE + 1;</span>
+    }
+
+    private static final class Window {
+        final long second;
+        final AtomicInteger count;
+
+<span class="fc" id="L74">        Window(long second, AtomicInteger count) {</span>
+<span class="fc" id="L75">            this.second = second;</span>
+<span class="fc" id="L76">            this.count = count;</span>
+<span class="fc" id="L77">        }</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

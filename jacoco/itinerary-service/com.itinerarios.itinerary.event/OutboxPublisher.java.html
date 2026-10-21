@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>OutboxPublisher.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">itinerary-service</a> &gt; <a href="index.source.html" class="el_package">com.itinerarios.itinerary.event</a> &gt; <span class="el_source">OutboxPublisher.java</span></div><h1>OutboxPublisher.java</h1><pre class="source lang-java linenums">package com.itinerarios.itinerary.event;
+
+import tools.jackson.databind.ObjectMapper;
+import com.itinerarios.itinerary.config.RabbitMQConfig;
+import com.itinerarios.itinerary.entity.OutboxEvent;
+import com.itinerarios.itinerary.repository.OutboxEventRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.amqp.AmqpException;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import org.springframework.data.domain.Limit;
+
+import java.time.Duration;
+import java.time.OffsetDateTime;
+import java.util.List;
+
+/**
+ * Segunda mitad del patrón Transactional Outbox (sección 81, ADR-008):
+ * lee periódicamente las filas PENDING/FAILED de outbox_events y las publica
+ * a RabbitMQ, marcando cada fila como PUBLISHED o incrementando su
+ * retry_count si falla de nuevo.
+ *
+ * Esto corre en un proceso/hilo separado de la transacción que creó el
+ * itinerario (sección 24: &quot;Outbox Publisher&quot; es un componente propio en el
+ * diagrama de Nivel 3), por lo que un fallo de RabbitMQ aquí nunca puede
+ * revertir el itinerario ya confirmado — solo demora la publicación del
+ * evento, que se reintentará en la siguiente ejecución programada.
+ */
+@Component
+public class OutboxPublisher {
+
+<span class="fc" id="L36">    private static final Logger log = LoggerFactory.getLogger(OutboxPublisher.class);</span>
+    // Backoff 2s, 4s, 8s... con tope de 5 min: 20 intentos cubren mas de 1 h de broker caido.
+    private static final int MAX_RETRY_COUNT = 20;
+<span class="fc" id="L39">    private static final Duration BASE_BACKOFF = Duration.ofSeconds(2);</span>
+<span class="fc" id="L40">    private static final Duration MAX_BACKOFF = Duration.ofMinutes(5);</span>
+
+    private final OutboxEventRepository outboxEventRepository;
+    private final RabbitTemplate rabbitTemplate;
+    private final ObjectMapper objectMapper;
+
+    public OutboxPublisher(OutboxEventRepository outboxEventRepository,
+                            RabbitTemplate rabbitTemplate,
+<span class="fc" id="L48">                            ObjectMapper objectMapper) {</span>
+<span class="fc" id="L49">        this.outboxEventRepository = outboxEventRepository;</span>
+<span class="fc" id="L50">        this.rabbitTemplate = rabbitTemplate;</span>
+<span class="fc" id="L51">        this.objectMapper = objectMapper;</span>
+<span class="fc" id="L52">    }</span>
+
+    @Scheduled(fixedDelayString = &quot;${outbox.publisher.poll-interval-ms:2000}&quot;)
+    public void publishPendingEvents() {
+<span class="fc" id="L56">        List&lt;OutboxEvent&gt; pending = outboxEventRepository.findReadyToPublish(</span>
+<span class="fc" id="L57">                List.of(OutboxEvent.Status.PENDING, OutboxEvent.Status.FAILED), OffsetDateTime.now(), Limit.of(50));</span>
+
+<span class="fc bfc" id="L59" title="All 2 branches covered.">        for (OutboxEvent event : pending) {</span>
+<span class="fc bfc" id="L60" title="All 2 branches covered.">            if (event.getRetryCount() &gt;= MAX_RETRY_COUNT) {</span>
+                // No reintentar indefinidamente (sección 28). El evento queda
+                // en FAILED con su último error_message para investigación
+                // manual; no bloquea la publicación de los demás eventos.
+<span class="fc" id="L64">                continue;</span>
+            }
+<span class="fc" id="L66">            publishOne(event);</span>
+<span class="fc" id="L67">        }</span>
+<span class="fc" id="L68">    }</span>
+
+    /** Espera antes del intento n+1 tras n fallos: 2s * 2^n, con tope MAX_BACKOFF. */
+    static Duration backoff(int failures) {
+<span class="fc" id="L72">        Duration delay = BASE_BACKOFF.multipliedBy(1L &lt;&lt; Math.min(failures, 20));</span>
+<span class="fc bfc" id="L73" title="All 2 branches covered.">        return delay.compareTo(MAX_BACKOFF) &gt; 0 ? MAX_BACKOFF : delay;</span>
+    }
+
+    @Transactional
+    void publishOne(OutboxEvent event) {
+        try {
+<span class="fc" id="L79">            ItineraryCreatedEvent payload = objectMapper.readValue(event.getPayload(), ItineraryCreatedEvent.class);</span>
+<span class="fc" id="L80">            rabbitTemplate.convertAndSend(</span>
+                    RabbitMQConfig.ITINERARY_EVENTS_EXCHANGE,
+                    RabbitMQConfig.ITINERARY_CREATED_ROUTING_KEY,
+                    payload
+            );
+<span class="fc" id="L85">            event.markPublished();</span>
+<span class="fc" id="L86">            log.info(&quot;Outbox event {} published for itinerary {}&quot;, event.getId(), event.getAggregateId());</span>
+<span class="fc" id="L87">        } catch (AmqpException | tools.jackson.core.JacksonException ex) {</span>
+<span class="fc" id="L88">            event.markFailed(ex.getMessage(), OffsetDateTime.now().plus(backoff(event.getRetryCount())));</span>
+<span class="fc" id="L89">            log.error(&quot;Failed to publish outbox event {} (attempt {}/{})&quot;,</span>
+<span class="fc" id="L90">                    event.getId(), event.getRetryCount() + 1, MAX_RETRY_COUNT, ex);</span>
+<span class="fc" id="L91">        }</span>
+<span class="fc" id="L92">        outboxEventRepository.save(event);</span>
+<span class="fc" id="L93">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

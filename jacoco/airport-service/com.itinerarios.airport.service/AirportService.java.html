@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AirportService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">airport-service</a> &gt; <a href="index.source.html" class="el_package">com.itinerarios.airport.service</a> &gt; <span class="el_source">AirportService.java</span></div><h1>AirportService.java</h1><pre class="source lang-java linenums">package com.itinerarios.airport.service;
+
+import com.itinerarios.airport.adapter.ColombiaAirportAdapter;
+import com.itinerarios.airport.config.RedisCacheConfig;
+import com.itinerarios.airport.dto.AirportDto;
+import com.itinerarios.airport.dto.adapter.ColombiaAirportResponse;
+import com.itinerarios.airport.entity.Airport;
+import com.itinerarios.airport.exception.AirportNotFoundException;
+import com.itinerarios.airport.mapper.ColombiaAirportMapper;
+import com.itinerarios.airport.repository.AirportRepository;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+/**
+ * Flujo de consulta por id (Redis cache-aside, sección 27):
+ *
+ *   Redis HIT  -&gt; Response
+ *   Redis MISS -&gt; PostgreSQL HIT/MISS -&gt; Response -&gt; se escribe en Redis
+ *
+ * Flujo de consulta por código IATA (usado por Itinerary Service para validar,
+ * sección 22 -- este es el que reproduce el diagrama completo de la
+ * especificación maestra):
+ *
+ *   Redis HIT  -&gt; Response
+ *   Redis MISS -&gt; PostgreSQL HIT -&gt; Response -&gt; se escribe en Redis
+ *              -&gt; PostgreSQL MISS -&gt; API Colombia -&gt; Adapter -&gt; persistir -&gt; Response -&gt; se escribe en Redis
+ *
+ * Los métodos anotados con @Cacheable delegan el patrón Cache-Aside en
+ * Spring: en un MISS, Spring ejecuta el cuerpo del método (que ya contiene
+ * toda la cadena PostgreSQL -&gt; API Colombia) y cachea automáticamente el
+ * resultado devuelto -- no hace falta manejar RedisTemplate a mano. Un
+ * resultado de error (excepción lanzada) nunca se cachea, intencionalmente:
+ * no queremos que un 404 quede &quot;pegado&quot; en cache si el aeropuerto aparece
+ * después en API Colombia.
+ */
+@Service
+public class AirportService {
+
+    private final AirportRepository airportRepository;
+    private final ColombiaAirportAdapter colombiaAirportAdapter;
+    private final ColombiaAirportMapper mapper;
+
+    public AirportService(AirportRepository airportRepository,
+                           ColombiaAirportAdapter colombiaAirportAdapter,
+<span class="fc" id="L48">                           ColombiaAirportMapper mapper) {</span>
+<span class="fc" id="L49">        this.airportRepository = airportRepository;</span>
+<span class="fc" id="L50">        this.colombiaAirportAdapter = colombiaAirportAdapter;</span>
+<span class="fc" id="L51">        this.mapper = mapper;</span>
+<span class="fc" id="L52">    }</span>
+
+    @Transactional(readOnly = true)
+    public List&lt;AirportDto&gt; findAll() {
+<span class="nc" id="L56">        return airportRepository.findAll().stream()</span>
+<span class="nc" id="L57">                .map(mapper::toDto)</span>
+<span class="nc" id="L58">                .toList();</span>
+    }
+
+    @Cacheable(cacheNames = RedisCacheConfig.AIRPORTS_BY_ID_CACHE, key = &quot;#id&quot;)
+    @Transactional(readOnly = true)
+    public AirportDto findById(Long id) {
+<span class="fc" id="L64">        Airport airport = airportRepository.findById(id)</span>
+<span class="fc" id="L65">                .orElseThrow(() -&gt; AirportNotFoundException.byId(id));</span>
+<span class="fc" id="L66">        return mapper.toDto(airport);</span>
+    }
+
+    /**
+     * Punto de entrada usado por Itinerary Service para validar un aeropuerto
+     * mediante HTTP (sección 14). Si no existe localmente, se consulta el
+     * Adapter y se persiste antes de responder. El resultado completo queda
+     * cacheado en Redis bajo la clave del código IATA (normalizado a
+     * mayúsculas para que &quot;bog&quot; y &quot;BOG&quot; compartan la misma entrada de cache).
+     */
+    @Cacheable(cacheNames = RedisCacheConfig.AIRPORTS_BY_IATA_CACHE, key = &quot;#iataCode.toUpperCase()&quot;)
+    @Transactional
+    public AirportDto findByIataCode(String iataCode) {
+<span class="fc" id="L79">        return airportRepository.findByIataCodeIgnoreCase(iataCode)</span>
+<span class="fc" id="L80">                .map(mapper::toDto)</span>
+<span class="fc" id="L81">                .orElseGet(() -&gt; fetchAndPersistFromExternal(iataCode));</span>
+    }
+
+    private AirportDto fetchAndPersistFromExternal(String iataCode) {
+<span class="fc" id="L85">        ColombiaAirportResponse external = colombiaAirportAdapter.findByIataCode(iataCode);</span>
+<span class="fc bfc" id="L86" title="All 2 branches covered.">        if (external == null) {</span>
+<span class="fc" id="L87">            throw AirportNotFoundException.byIataCode(iataCode);</span>
+        }
+
+<span class="fc" id="L90">        Airport airport = airportRepository.findByExternalId(String.valueOf(external.id()))</span>
+<span class="fc" id="L91">                .map(existing -&gt; {</span>
+<span class="nc" id="L92">                    mapper.updateEntity(existing, external);</span>
+<span class="nc" id="L93">                    return existing;</span>
+                })
+<span class="fc" id="L95">                .orElseGet(() -&gt; mapper.toEntity(external));</span>
+
+<span class="fc" id="L97">        Airport saved = airportRepository.save(airport);</span>
+<span class="fc" id="L98">        return mapper.toDto(saved);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

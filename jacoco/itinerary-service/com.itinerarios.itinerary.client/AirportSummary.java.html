@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AirportSummary.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">itinerary-service</a> &gt; <a href="index.source.html" class="el_package">com.itinerarios.itinerary.client</a> &gt; <span class="el_source">AirportSummary.java</span></div><h1>AirportSummary.java</h1><pre class="source lang-java linenums">package com.itinerarios.itinerary.client;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+/**
+ * Subconjunto del AirportDto expuesto por itinerarios-airport-service.
+ * Solo se toman los campos que Itinerary Service realmente necesita
+ * para validar un código IATA (sección 11: Itinerary no mantiene una
+ * entidad Airport completa).
+ */
+@JsonIgnoreProperties(ignoreUnknown = true)
+<span class="fc" id="L12">public record AirportSummary(</span>
+        Long id,
+        String iataCode,
+        String name,
+        boolean active
+) {
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

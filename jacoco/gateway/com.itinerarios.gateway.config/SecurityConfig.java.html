@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SecurityConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">gateway</a> &gt; <a href="index.source.html" class="el_package">com.itinerarios.gateway.config</a> &gt; <span class="el_source">SecurityConfig.java</span></div><h1>SecurityConfig.java</h1><pre class="source lang-java linenums">package com.itinerarios.gateway.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.oauth2.client.AuthorizedClientServiceReactiveOAuth2AuthorizedClientManager;
+import org.springframework.security.oauth2.client.ReactiveOAuth2AuthorizedClientManager;
+import org.springframework.security.oauth2.client.ReactiveOAuth2AuthorizedClientProviderBuilder;
+import org.springframework.security.oauth2.client.ReactiveOAuth2AuthorizedClientService;
+import org.springframework.security.oauth2.client.registration.ReactiveClientRegistrationRepository;
+import org.springframework.security.web.server.SecurityWebFilterChain;
+
+/**
+ * El Gateway es cliente OAuth2 (Client Credentials), no resource server: el frontend no tiene
+ * usuarios autenticados todavia (fuera del alcance del paso 31). Su propio trafico entrante queda
+ * abierto como antes (CORS + rate limit); la proteccion esta en los servicios internos.
+ */
+@Configuration
+<span class="nc" id="L19">public class SecurityConfig {</span>
+
+    @Bean
+    SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
+<span class="nc" id="L23">        return http</span>
+<span class="nc" id="L24">                .csrf(ServerHttpSecurity.CsrfSpec::disable)</span>
+<span class="nc" id="L25">                .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)</span>
+<span class="nc" id="L26">                .formLogin(ServerHttpSecurity.FormLoginSpec::disable)</span>
+<span class="nc" id="L27">                .authorizeExchange(exchanges -&gt; exchanges.anyExchange().permitAll())</span>
+<span class="nc" id="L28">                .build();</span>
+    }
+
+    @Bean
+    ReactiveOAuth2AuthorizedClientManager authorizedClientManager(ReactiveClientRegistrationRepository registrations,
+                                                                  ReactiveOAuth2AuthorizedClientService clients) {
+<span class="nc" id="L34">        AuthorizedClientServiceReactiveOAuth2AuthorizedClientManager manager =</span>
+                new AuthorizedClientServiceReactiveOAuth2AuthorizedClientManager(registrations, clients);
+<span class="nc" id="L36">        manager.setAuthorizedClientProvider(ReactiveOAuth2AuthorizedClientProviderBuilder.builder().clientCredentials().build());</span>
+<span class="nc" id="L37">        return manager;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SecurityConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">notification-service</a> &gt; <a href="index.source.html" class="el_package">com.itinerarios.notification.config</a> &gt; <span class="el_source">SecurityConfig.java</span></div><h1>SecurityConfig.java</h1><pre class="source lang-java linenums">package com.itinerarios.notification.config;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.web.SecurityFilterChain;
+import tools.jackson.databind.ObjectMapper;
+
+import java.io.IOException;
+import java.time.OffsetDateTime;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+/**
+ * Seguridad servicio-a-servicio (paso 31, seccion 108): el historial de notificaciones solo se
+ * consulta con un JWT de Keycloak con scope notification.read (hoy, el Gateway). El consumo de
+ * RabbitMQ y el handler Lambda no pasan por HTTP, asi que no se ven afectados. La Lambda arranca
+ * Spring sin servidor web (no hay HttpSecurity): por eso esta config solo aplica en contexto web.
+ */
+@Configuration
+@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
+<span class="fc" id="L30">public class SecurityConfig {</span>
+
+    @Bean
+    SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper objectMapper) throws Exception {
+<span class="fc" id="L34">        http</span>
+                // CSRF queda activo: oauth2ResourceServer lo omite en peticiones con Bearer token (el
+                // caso normal S2S) y sigue protegiendo cualquier otra (defensa en profundidad, Sonar S4502).
+<span class="fc" id="L37">                .sessionManagement(s -&gt; s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))</span>
+<span class="fc" id="L38">                .authorizeHttpRequests(auth -&gt; auth</span>
+<span class="fc" id="L39">                        .requestMatchers(&quot;/actuator/**&quot;, &quot;/swagger-ui.html&quot;, &quot;/swagger-ui/**&quot;, &quot;/v3/api-docs/**&quot;).permitAll()</span>
+<span class="fc" id="L40">                        .requestMatchers(HttpMethod.GET, &quot;/api/notifications/**&quot;).hasAuthority(&quot;SCOPE_notification.read&quot;)</span>
+<span class="fc" id="L41">                        .anyRequest().authenticated())</span>
+<span class="fc" id="L42">                .oauth2ResourceServer(oauth2 -&gt; oauth2</span>
+<span class="fc" id="L43">                        .jwt(Customizer.withDefaults())</span>
+<span class="fc" id="L44">                        .authenticationEntryPoint((req, res, ex) -&gt;</span>
+<span class="fc" id="L45">                                writeError(objectMapper, req, res, HttpStatus.UNAUTHORIZED, &quot;Missing or invalid bearer token&quot;))</span>
+<span class="fc" id="L46">                        .accessDeniedHandler((req, res, ex) -&gt;</span>
+<span class="fc" id="L47">                                writeError(objectMapper, req, res, HttpStatus.FORBIDDEN, &quot;Insufficient scope&quot;)));</span>
+<span class="fc" id="L48">        return http.build();</span>
+    }
+
+    /** Mismo formato de error que los demas servicios (seccion 64). */
+    private static void writeError(ObjectMapper objectMapper, HttpServletRequest request, HttpServletResponse response,
+                                   HttpStatus status, String message) throws IOException {
+<span class="fc" id="L54">        Map&lt;String, Object&gt; body = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc" id="L55">        body.put(&quot;timestamp&quot;, OffsetDateTime.now().toString());</span>
+<span class="fc" id="L56">        body.put(&quot;status&quot;, status.value());</span>
+<span class="fc" id="L57">        body.put(&quot;error&quot;, status.name());</span>
+<span class="fc" id="L58">        body.put(&quot;message&quot;, message);</span>
+<span class="fc" id="L59">        body.put(&quot;path&quot;, request.getRequestURI());</span>
+<span class="fc" id="L60">        body.put(&quot;correlationId&quot;, request.getHeader(&quot;X-Correlation-ID&quot;));</span>
+<span class="fc" id="L61">        response.setStatus(status.value());</span>
+<span class="fc" id="L62">        response.setContentType(MediaType.APPLICATION_JSON_VALUE);</span>
+<span class="fc" id="L63">        objectMapper.writeValue(response.getOutputStream(), body);</span>
+<span class="fc" id="L64">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

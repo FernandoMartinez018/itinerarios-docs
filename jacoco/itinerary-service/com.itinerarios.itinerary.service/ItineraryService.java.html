@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ItineraryService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">itinerary-service</a> &gt; <a href="index.source.html" class="el_package">com.itinerarios.itinerary.service</a> &gt; <span class="el_source">ItineraryService.java</span></div><h1>ItineraryService.java</h1><pre class="source lang-java linenums">package com.itinerarios.itinerary.service;
+
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
+import com.itinerarios.itinerary.client.AirportServiceClient;
+import com.itinerarios.itinerary.dto.ItineraryDto;
+import com.itinerarios.itinerary.dto.ItineraryRequest;
+import com.itinerarios.itinerary.dto.PageResponse;
+import com.itinerarios.itinerary.entity.Itinerary;
+import com.itinerarios.itinerary.entity.OutboxEvent;
+import com.itinerarios.itinerary.event.ItineraryCreatedEvent;
+import com.itinerarios.itinerary.exception.ItineraryNotFoundException;
+import com.itinerarios.itinerary.mapper.ItineraryMapper;
+import com.itinerarios.itinerary.repository.ItineraryRepository;
+import com.itinerarios.itinerary.repository.OutboxEventRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+/**
+ * Flujo de creacion (seccion 24, tramo Nivel 3 - Transactional Outbox,
+ * ADR-008): dentro de UNA sola transaccion de PostgreSQL se escriben tanto
+ * el itinerario como el evento pendiente de publicar. O ambas escrituras se
+ * confirman juntas, o ninguna - nunca queda un itinerario guardado con el
+ * evento perdido (el problema que Nivel 2 aceptaba como limitacion conocida
+ * en ItineraryEventPublisher, ahora resuelto).
+ *
+ * La publicacion real a RabbitMQ ocurre despues, de forma asincrona, en
+ * OutboxPublisher - un proceso separado que lee esta misma tabla.
+ */
+@Service
+public class ItineraryService {
+
+    private final ItineraryRepository itineraryRepository;
+    private final OutboxEventRepository outboxEventRepository;
+    private final AirportServiceClient airportServiceClient;
+    private final ItineraryMapper mapper;
+    private final ObjectMapper objectMapper;
+
+    public ItineraryService(ItineraryRepository itineraryRepository,
+                             OutboxEventRepository outboxEventRepository,
+                             AirportServiceClient airportServiceClient,
+                             ItineraryMapper mapper,
+<span class="fc" id="L48">                             ObjectMapper objectMapper) {</span>
+<span class="fc" id="L49">        this.itineraryRepository = itineraryRepository;</span>
+<span class="fc" id="L50">        this.outboxEventRepository = outboxEventRepository;</span>
+<span class="fc" id="L51">        this.airportServiceClient = airportServiceClient;</span>
+<span class="fc" id="L52">        this.mapper = mapper;</span>
+<span class="fc" id="L53">        this.objectMapper = objectMapper;</span>
+<span class="fc" id="L54">    }</span>
+
+    @Transactional(readOnly = true)
+    public List&lt;ItineraryDto&gt; findAll() {
+<span class="nc" id="L58">        return itineraryRepository.findAll().stream()</span>
+<span class="nc" id="L59">                .map(mapper::toDto)</span>
+<span class="nc" id="L60">                .toList();</span>
+    }
+
+    /** API v2: pagina ordenada por id para que el recorrido sea estable entre paginas. */
+    @Transactional(readOnly = true)
+    public PageResponse&lt;ItineraryDto&gt; findPage(int page, int size) {
+<span class="fc" id="L66">        Page&lt;Itinerary&gt; result = itineraryRepository.findAll(PageRequest.of(page, size, Sort.by(&quot;id&quot;)));</span>
+<span class="fc" id="L67">        return new PageResponse&lt;&gt;(result.map(mapper::toDto).getContent(), result.getNumber(), result.getSize(),</span>
+<span class="fc" id="L68">                result.getTotalElements(), result.getTotalPages());</span>
+    }
+
+    @Transactional(readOnly = true)
+    public ItineraryDto findById(Long id) {
+<span class="fc" id="L73">        Itinerary itinerary = itineraryRepository.findById(id)</span>
+<span class="pc" id="L74">                .orElseThrow(() -&gt; new ItineraryNotFoundException(id));</span>
+<span class="nc" id="L75">        return mapper.toDto(itinerary);</span>
+    }
+
+    @Transactional
+    public ItineraryDto create(ItineraryRequest request) {
+<span class="fc" id="L80">        validateAirports(request.departureAirportId(), request.arrivalAirportId());</span>
+
+<span class="fc" id="L82">        Itinerary itinerary = new Itinerary(</span>
+<span class="fc" id="L83">                request.userName(),</span>
+<span class="fc" id="L84">                request.departureAirportId(),</span>
+<span class="fc" id="L85">                request.arrivalAirportId(),</span>
+<span class="fc" id="L86">                request.travelDate(),</span>
+<span class="fc" id="L87">                request.durationMinutes()</span>
+        );
+
+<span class="fc" id="L90">        Itinerary saved = itineraryRepository.save(itinerary);</span>
+
+        // Misma transaccion que el save de arriba: si esto falla, el save
+        // del itinerario tambien se revierte (rollback conjunto).
+<span class="fc" id="L94">        enqueueItineraryCreatedEvent(saved);</span>
+
+<span class="fc" id="L96">        return mapper.toDto(saved);</span>
+    }
+
+    @Transactional
+    public ItineraryDto update(Long id, ItineraryRequest request) {
+<span class="nc" id="L101">        Itinerary itinerary = itineraryRepository.findById(id)</span>
+<span class="nc" id="L102">                .orElseThrow(() -&gt; new ItineraryNotFoundException(id));</span>
+
+<span class="nc" id="L104">        validateAirports(request.departureAirportId(), request.arrivalAirportId());</span>
+
+<span class="nc" id="L106">        itinerary.update(</span>
+<span class="nc" id="L107">                request.userName(),</span>
+<span class="nc" id="L108">                request.departureAirportId(),</span>
+<span class="nc" id="L109">                request.arrivalAirportId(),</span>
+<span class="nc" id="L110">                request.travelDate(),</span>
+<span class="nc" id="L111">                request.durationMinutes()</span>
+        );
+
+<span class="nc" id="L114">        return mapper.toDto(itinerary);</span>
+    }
+
+    @Transactional
+    public void delete(Long id) {
+<span class="pc bpc" id="L119" title="1 of 2 branches missed.">        if (!itineraryRepository.existsById(id)) {</span>
+<span class="fc" id="L120">            throw new ItineraryNotFoundException(id);</span>
+        }
+<span class="nc" id="L122">        itineraryRepository.deleteById(id);</span>
+<span class="nc" id="L123">    }</span>
+
+    private void enqueueItineraryCreatedEvent(Itinerary itinerary) {
+<span class="fc" id="L126">        ItineraryCreatedEvent event = ItineraryCreatedEvent.from(itinerary);</span>
+<span class="fc" id="L127">        String payloadJson = serialize(event);</span>
+
+<span class="fc" id="L129">        OutboxEvent outboxEvent = OutboxEvent.pending(</span>
+                &quot;Itinerary&quot;,
+<span class="fc" id="L131">                String.valueOf(itinerary.getId()),</span>
+<span class="fc" id="L132">                event.eventType(),</span>
+                payloadJson
+        );
+
+<span class="fc" id="L136">        outboxEventRepository.save(outboxEvent);</span>
+<span class="fc" id="L137">    }</span>
+
+    private String serialize(ItineraryCreatedEvent event) {
+        try {
+<span class="fc" id="L141">            return objectMapper.writeValueAsString(event);</span>
+<span class="nc" id="L142">        } catch (JacksonException ex) {</span>
+            // Un evento que no se puede serializar es un bug de programacion
+            // (el record es fijo y conocido), no una falla transitoria de
+            // infraestructura - se propaga y revierte toda la transaccion
+            // en vez de guardar un itinerario con un evento corrupto.
+<span class="nc" id="L147">            throw new IllegalStateException(&quot;Failed to serialize ItineraryCreatedEvent&quot;, ex);</span>
+        }
+    }
+
+    private void validateAirports(String departureAirportId, String arrivalAirportId) {
+<span class="fc" id="L152">        airportServiceClient.validateAirport(departureAirportId);</span>
+<span class="fc" id="L153">        airportServiceClient.validateAirport(arrivalAirportId);</span>
+<span class="fc" id="L154">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

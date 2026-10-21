@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SecurityConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">itinerary-service</a> &gt; <a href="index.source.html" class="el_package">com.itinerarios.itinerary.config</a> &gt; <span class="el_source">SecurityConfig.java</span></div><h1>SecurityConfig.java</h1><pre class="source lang-java linenums">package com.itinerarios.itinerary.config;
+
+import com.itinerarios.itinerary.exception.ErrorResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.MDC;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.web.SecurityFilterChain;
+import tools.jackson.databind.ObjectMapper;
+
+import java.io.IOException;
+import java.time.OffsetDateTime;
+
+/**
+ * Seguridad servicio-a-servicio (paso 31, seccion 108): Itinerary Service es resource server
+ * OAuth2 (JWT de Keycloak): lectura con itinerary.read y escritura con itinerary.write (hoy solo
+ * los tiene el Gateway). Ademas es cliente OAuth2 hacia Airport Service (ver RestClientConfig).
+ * Actuator y Swagger quedan abiertos para health checks, Prometheus y la documentacion local.
+ */
+@Configuration
+<span class="fc" id="L28">public class SecurityConfig {</span>
+
+    @Bean
+    SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper objectMapper) throws Exception {
+<span class="fc" id="L32">        http</span>
+                // CSRF queda activo: oauth2ResourceServer lo omite en peticiones con Bearer token (el
+                // caso normal S2S) y sigue protegiendo cualquier otra (defensa en profundidad, Sonar S4502).
+<span class="fc" id="L35">                .sessionManagement(s -&gt; s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))</span>
+<span class="fc" id="L36">                .authorizeHttpRequests(auth -&gt; auth</span>
+<span class="fc" id="L37">                        .requestMatchers(&quot;/actuator/**&quot;, &quot;/swagger-ui.html&quot;, &quot;/swagger-ui/**&quot;, &quot;/v3/api-docs/**&quot;).permitAll()</span>
+<span class="fc" id="L38">                        .requestMatchers(HttpMethod.GET, &quot;/api/itineraries/**&quot;).hasAuthority(&quot;SCOPE_itinerary.read&quot;)</span>
+<span class="fc" id="L39">                        .requestMatchers(&quot;/api/itineraries/**&quot;).hasAuthority(&quot;SCOPE_itinerary.write&quot;)</span>
+<span class="fc" id="L40">                        .anyRequest().authenticated())</span>
+<span class="fc" id="L41">                .oauth2ResourceServer(oauth2 -&gt; oauth2</span>
+<span class="fc" id="L42">                        .jwt(Customizer.withDefaults())</span>
+<span class="fc" id="L43">                        .authenticationEntryPoint((req, res, ex) -&gt;</span>
+<span class="fc" id="L44">                                writeError(objectMapper, req, res, HttpStatus.UNAUTHORIZED, &quot;Missing or invalid bearer token&quot;))</span>
+<span class="fc" id="L45">                        .accessDeniedHandler((req, res, ex) -&gt;</span>
+<span class="fc" id="L46">                                writeError(objectMapper, req, res, HttpStatus.FORBIDDEN, &quot;Insufficient scope&quot;)));</span>
+<span class="fc" id="L47">        return http.build();</span>
+    }
+
+    /** Mismo JSON de error que GlobalExceptionHandler (seccion 64), con el Correlation ID del MDC. */
+    private static void writeError(ObjectMapper objectMapper, HttpServletRequest request, HttpServletResponse response,
+                                   HttpStatus status, String message) throws IOException {
+<span class="fc" id="L53">        response.setStatus(status.value());</span>
+<span class="fc" id="L54">        response.setContentType(MediaType.APPLICATION_JSON_VALUE);</span>
+<span class="fc" id="L55">        objectMapper.writeValue(response.getOutputStream(), new ErrorResponse(OffsetDateTime.now(), status.value(),</span>
+<span class="fc" id="L56">                status.name(), message, request.getRequestURI(), MDC.get(CorrelationIdFilter.MDC_KEY)));</span>
+<span class="fc" id="L57">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

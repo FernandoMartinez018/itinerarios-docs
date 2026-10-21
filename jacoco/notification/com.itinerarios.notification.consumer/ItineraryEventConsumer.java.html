@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ItineraryEventConsumer.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">notification-service</a> &gt; <a href="index.source.html" class="el_package">com.itinerarios.notification.consumer</a> &gt; <span class="el_source">ItineraryEventConsumer.java</span></div><h1>ItineraryEventConsumer.java</h1><pre class="source lang-java linenums">package com.itinerarios.notification.consumer;
+
+import com.itinerarios.notification.config.RabbitMQConfig;
+import com.itinerarios.notification.event.ItineraryCreatedEvent;
+import com.itinerarios.notification.processor.NotificationProcessor;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.context.annotation.Profile;
+import org.springframework.stereotype.Component;
+
+/**
+ * Unico punto de entrada de mensajeria. Deliberadamente delgado: solo recibe
+ * el mensaje y delega toda la logica de negocio en NotificationProcessor,
+ * para mantener esa logica independiente del framework de mensajeria
+ * (mismo principio de separacion que Controller -&gt; Service en los demas
+ * microservicios, seccion 20).
+ */
+// En Lambda el evento llega por invocacion, no por la cola: no se registra el listener.
+@Profile(&quot;!lambda&quot;)
+@Component
+public class ItineraryEventConsumer {
+
+    private final NotificationProcessor processor;
+
+<span class="nc" id="L24">    public ItineraryEventConsumer(NotificationProcessor processor) {</span>
+<span class="nc" id="L25">        this.processor = processor;</span>
+<span class="nc" id="L26">    }</span>
+
+    @RabbitListener(
+            queues = RabbitMQConfig.NOTIFICATION_QUEUE,
+            containerFactory = RabbitMQConfig.LISTENER_CONTAINER_FACTORY
+    )
+    public void onItineraryCreated(ItineraryCreatedEvent event) {
+<span class="nc" id="L33">        processor.process(event);</span>
+<span class="nc" id="L34">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ItineraryEventPublisher.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">itinerary-service</a> &gt; <a href="index.source.html" class="el_package">com.itinerarios.itinerary.event</a> &gt; <span class="el_source">ItineraryEventPublisher.java</span></div><h1>ItineraryEventPublisher.java</h1><pre class="source lang-java linenums">package com.itinerarios.itinerary.event;
+
+import com.itinerarios.itinerary.config.RabbitMQConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.amqp.AmqpException;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.stereotype.Component;
+
+/**
+ * Publica ItineraryCreatedEvent después de que el itinerario ya se
+ * persistió exitosamente en PostgreSQL (sección 24, tramo Nivel 2).
+ *
+ * LIMITACIÓN CONOCIDA (Double Write Problem, sección 81): si la
+ * publicación falla después de que la transacción de PostgreSQL ya hizo
+ * commit, el itinerario queda guardado pero el evento se pierde — no hay
+ * forma de deshacer un commit ya confirmado ni de reintentar la
+ * publicación de forma transaccional en este punto. Esta clase
+ * deliberadamente NO relanza la excepción para no romper la respuesta
+ * HTTP de creación del itinerario por un fallo del broker; solo la
+ * registra. La solución real (Transactional Outbox) es Nivel 3, sección
+ * 81 — no se implementa aquí a propósito, para no adelantar niveles.
+ */
+@Component
+public class ItineraryEventPublisher {
+
+<span class="nc" id="L27">    private static final Logger log = LoggerFactory.getLogger(ItineraryEventPublisher.class);</span>
+
+    private final RabbitTemplate rabbitTemplate;
+
+<span class="nc" id="L31">    public ItineraryEventPublisher(RabbitTemplate rabbitTemplate) {</span>
+<span class="nc" id="L32">        this.rabbitTemplate = rabbitTemplate;</span>
+<span class="nc" id="L33">    }</span>
+
+    public void publish(ItineraryCreatedEvent event) {
+        try {
+<span class="nc" id="L37">            rabbitTemplate.convertAndSend(</span>
+                    RabbitMQConfig.ITINERARY_EVENTS_EXCHANGE,
+                    RabbitMQConfig.ITINERARY_CREATED_ROUTING_KEY,
+                    event
+            );
+<span class="nc" id="L42">        } catch (AmqpException ex) {</span>
+<span class="nc" id="L43">            log.error(&quot;Failed to publish ItineraryCreatedEvent for itinerary {}. &quot;</span>
+                    + &quot;The itinerary was already persisted; the event was lost. &quot;
+                    + &quot;See ADR-008 (Transactional Outbox, Nivel 3) for the real fix.&quot;,
+<span class="nc" id="L46">                    event.itineraryId(), ex);</span>
+<span class="nc" id="L47">        }</span>
+<span class="nc" id="L48">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

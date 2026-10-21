@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RabbitMQConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">notification-service</a> &gt; <a href="index.source.html" class="el_package">com.itinerarios.notification.config</a> &gt; <span class="el_source">RabbitMQConfig.java</span></div><h1>RabbitMQConfig.java</h1><pre class="source lang-java linenums">package com.itinerarios.notification.config;
+
+import org.springframework.amqp.core.Binding;
+import org.springframework.amqp.core.BindingBuilder;
+import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.core.TopicExchange;
+import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
+import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
+import org.springframework.boot.amqp.autoconfigure.SimpleRabbitListenerContainerFactoryConfigurer;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+/**
+ * Notification Service es el consumidor: declara su propia queue y el
+ * binding hacia el exchange que publica itinerary-service. El exchange en
+ * sí (`itinerary.events`, topic) ya lo declara itinerary-service; declararlo
+ * también aquí con los mismos parámetros es idempotente y evita un error de
+ * arranque si Notification Service arranca antes que Itinerary Service.
+ */
+@Configuration
+<span class="nc" id="L22">public class RabbitMQConfig {</span>
+
+    public static final String ITINERARY_EVENTS_EXCHANGE = &quot;itinerary.events&quot;;
+    public static final String ITINERARY_CREATED_ROUTING_KEY = &quot;itinerary.created&quot;;
+    public static final String NOTIFICATION_QUEUE = &quot;notification.itinerary-created.queue&quot;;
+
+    @Bean
+    public TopicExchange itineraryEventsExchange() {
+<span class="nc" id="L30">        return new TopicExchange(ITINERARY_EVENTS_EXCHANGE, true, false);</span>
+    }
+
+    @Bean
+    public Queue notificationQueue() {
+<span class="nc" id="L35">        return new Queue(NOTIFICATION_QUEUE, true);</span>
+    }
+
+    @Bean
+    public Binding notificationBinding(Queue notificationQueue, TopicExchange itineraryEventsExchange) {
+<span class="nc" id="L40">        return BindingBuilder.bind(notificationQueue)</span>
+<span class="nc" id="L41">                .to(itineraryEventsExchange)</span>
+<span class="nc" id="L42">                .with(ITINERARY_CREATED_ROUTING_KEY);</span>
+    }
+
+    public static final String LISTENER_CONTAINER_FACTORY = &quot;notificationListenerContainerFactory&quot;;
+
+    @Bean
+    public JacksonJsonMessageConverter jsonMessageConverter() {
+<span class="nc" id="L49">        return new JacksonJsonMessageConverter();</span>
+    }
+
+    @Bean(LISTENER_CONTAINER_FACTORY)
+    public SimpleRabbitListenerContainerFactory notificationListenerContainerFactory(
+            SimpleRabbitListenerContainerFactoryConfigurer configurer,
+            ConnectionFactory connectionFactory, JacksonJsonMessageConverter converter) {
+<span class="nc" id="L56">        SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();</span>
+        // El configurer aplica spring.rabbitmq.listener.simple.* (retry, default-requeue-rejected);
+        // sin el, un mensaje no deserializable se reencolaba en bucle infinito.
+<span class="nc" id="L59">        configurer.configure(factory, connectionFactory);</span>
+<span class="nc" id="L60">        factory.setMessageConverter(converter);</span>
+<span class="nc" id="L61">        return factory;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

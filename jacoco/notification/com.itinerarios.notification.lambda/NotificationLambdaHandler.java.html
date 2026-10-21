@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>NotificationLambdaHandler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">notification-service</a> &gt; <a href="index.source.html" class="el_package">com.itinerarios.notification.lambda</a> &gt; <span class="el_source">NotificationLambdaHandler.java</span></div><h1>NotificationLambdaHandler.java</h1><pre class="source lang-java linenums">package com.itinerarios.notification.lambda;
+
+import com.amazonaws.services.lambda.runtime.Context;
+import com.amazonaws.services.lambda.runtime.RequestStreamHandler;
+import com.itinerarios.notification.NotificationServiceApplication;
+import com.itinerarios.notification.event.ItineraryCreatedEvent;
+import com.itinerarios.notification.processor.NotificationProcessor;
+import org.springframework.boot.WebApplicationType;
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.context.ConfigurableApplicationContext;
+import tools.jackson.databind.ObjectMapper;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+
+/**
+ * SendNotificationFunction (secciones 31, 58, 89): entrada AWS Lambda / LocalStack.
+ * Delega en el mismo NotificationProcessor que usa el consumer RabbitMQ, asi que la
+ * logica de negocio es identica en local y en cloud (seccion 60); solo cambia el transporte.
+ *
+ * Se usa RequestStreamHandler para deserializar con el JsonMapper de Spring (Jackson 3),
+ * el mismo que lee los mensajes de RabbitMQ, en vez del serializador propio del runtime.
+ */
+<span class="fc" id="L26">public class NotificationLambdaHandler implements RequestStreamHandler {</span>
+
+    // Reutilizado entre invocaciones del mismo contenedor: Spring arranca una vez por cold start.
+    static ConfigurableApplicationContext context;
+
+    @Override
+    public void handleRequest(InputStream input, OutputStream output, Context lambdaContext) throws IOException {
+<span class="fc" id="L33">        ConfigurableApplicationContext ctx = context();</span>
+<span class="fc" id="L34">        ItineraryCreatedEvent event = ctx.getBean(ObjectMapper.class).readValue(input, ItineraryCreatedEvent.class);</span>
+<span class="fc" id="L35">        ctx.getBean(NotificationProcessor.class).process(event);</span>
+<span class="fc" id="L36">        output.write((&quot;{\&quot;status\&quot;:\&quot;PROCESSED\&quot;,\&quot;eventId\&quot;:\&quot;&quot; + event.eventId() + &quot;\&quot;}&quot;)</span>
+<span class="fc" id="L37">                .getBytes(StandardCharsets.UTF_8));</span>
+<span class="fc" id="L38">    }</span>
+
+    private static synchronized ConfigurableApplicationContext context() {
+<span class="pc bpc" id="L41" title="1 of 2 branches missed.">        if (context == null) {</span>
+<span class="nc" id="L42">            context = new SpringApplicationBuilder(NotificationServiceApplication.class)</span>
+<span class="nc" id="L43">                    .web(WebApplicationType.NONE)</span>
+<span class="nc" id="L44">                    .profiles(&quot;lambda&quot;)</span>
+<span class="nc" id="L45">                    .run();</span>
+        }
+<span class="fc" id="L47">        return context;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

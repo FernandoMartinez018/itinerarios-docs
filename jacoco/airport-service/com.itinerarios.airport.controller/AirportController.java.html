@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AirportController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">airport-service</a> &gt; <a href="index.source.html" class="el_package">com.itinerarios.airport.controller</a> &gt; <span class="el_source">AirportController.java</span></div><h1>AirportController.java</h1><pre class="source lang-java linenums">package com.itinerarios.airport.controller;
+
+import com.itinerarios.airport.dto.AirportDto;
+import com.itinerarios.airport.service.AirportService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping(&quot;/api/airports&quot;)
+@Tag(name = &quot;Airports&quot;, description = &quot;Consulta de aeropuertos de Colombia&quot;)
+public class AirportController {
+
+    private final AirportService airportService;
+
+<span class="fc" id="L19">    public AirportController(AirportService airportService) {</span>
+<span class="fc" id="L20">        this.airportService = airportService;</span>
+<span class="fc" id="L21">    }</span>
+
+    @GetMapping
+    @Operation(summary = &quot;Lista los aeropuertos ya sincronizados en la base local&quot;)
+    public ResponseEntity&lt;List&lt;AirportDto&gt;&gt; findAll() {
+<span class="fc" id="L26">        return ResponseEntity.ok(airportService.findAll());</span>
+    }
+
+    @GetMapping(&quot;/{id}&quot;)
+    @Operation(summary = &quot;Obtiene un aeropuerto por su id interno&quot;)
+    public ResponseEntity&lt;AirportDto&gt; findById(@PathVariable Long id) {
+<span class="nc" id="L32">        return ResponseEntity.ok(airportService.findById(id));</span>
+    }
+
+    @GetMapping(&quot;/iata/{iataCode}&quot;)
+    @Operation(summary = &quot;Obtiene (y sincroniza si es necesario) un aeropuerto por código IATA. &quot;
+            + &quot;Usado por Itinerary Service para validar aeropuertos de un itinerario.&quot;)
+    public ResponseEntity&lt;AirportDto&gt; findByIataCode(@PathVariable String iataCode) {
+<span class="fc" id="L39">        return ResponseEntity.ok(airportService.findByIataCode(iataCode));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

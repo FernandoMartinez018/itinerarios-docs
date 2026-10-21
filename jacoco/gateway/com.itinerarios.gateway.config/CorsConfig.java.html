@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CorsConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">gateway</a> &gt; <a href="index.source.html" class="el_package">com.itinerarios.gateway.config</a> &gt; <span class="el_source">CorsConfig.java</span></div><h1>CorsConfig.java</h1><pre class="source lang-java linenums">package com.itinerarios.gateway.config;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.reactive.CorsWebFilter;
+import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
+
+import java.util.List;
+
+@Configuration
+<span class="fc" id="L13">public class CorsConfig {</span>
+
+    // En WebFlux un CorsConfigurationSource suelto no se aplica: hace falta el CorsWebFilter
+    // (sin el, el navegador bloqueaba todas las llamadas del frontend).
+    @Bean
+    public CorsWebFilter corsWebFilter(
+            @Value(&quot;${gateway.cors.allowed-origins:http://localhost:4200}&quot;) List&lt;String&gt; allowedOrigins) {
+
+<span class="fc" id="L21">        CorsConfiguration configuration = new CorsConfiguration();</span>
+<span class="fc" id="L22">        configuration.setAllowedOrigins(allowedOrigins);</span>
+<span class="fc" id="L23">        configuration.setAllowedMethods(List.of(&quot;GET&quot;, &quot;POST&quot;, &quot;PUT&quot;, &quot;DELETE&quot;, &quot;OPTIONS&quot;));</span>
+<span class="fc" id="L24">        configuration.setAllowedHeaders(List.of(&quot;*&quot;));</span>
+<span class="fc" id="L25">        configuration.setExposedHeaders(List.of(&quot;X-Correlation-ID&quot;));</span>
+<span class="fc" id="L26">        configuration.setAllowCredentials(true);</span>
+
+<span class="fc" id="L28">        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();</span>
+<span class="fc" id="L29">        source.registerCorsConfiguration(&quot;/**&quot;, configuration);</span>
+<span class="fc" id="L30">        return new CorsWebFilter(source);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

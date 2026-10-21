@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Itinerary.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">itinerary-service</a> &gt; <a href="index.source.html" class="el_package">com.itinerarios.itinerary.entity</a> &gt; <span class="el_source">Itinerary.java</span></div><h1>Itinerary.java</h1><pre class="source lang-java linenums">package com.itinerarios.itinerary.entity;
+
+import jakarta.persistence.*;
+
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+
+/**
+ * Agregado principal del Itinerary Context.
+ * No contiene una entidad Airport completa (sección 11): solo referencias
+ * (código IATA) validadas vía HTTP contra Airport Service. Esto evita
+ * compartir entidades/tablas entre microservicios (sección 102).
+ */
+@Entity
+@Table(name = &quot;itineraries&quot;)
+public class Itinerary {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = &quot;user_name&quot;, nullable = false, length = 150)
+    private String userName;
+
+    /** Código IATA del aeropuerto de salida, validado contra Airport Service. */
+    @Column(name = &quot;departure_airport_id&quot;, nullable = false, length = 50)
+    private String departureAirportId;
+
+    /** Código IATA del aeropuerto de llegada, validado contra Airport Service. */
+    @Column(name = &quot;arrival_airport_id&quot;, nullable = false, length = 50)
+    private String arrivalAirportId;
+
+    @Column(name = &quot;travel_date&quot;, nullable = false)
+    private LocalDate travelDate;
+
+    @Column(name = &quot;duration_minutes&quot;, nullable = false)
+    private Integer durationMinutes;
+
+    @Column(name = &quot;created_at&quot;, nullable = false, updatable = false)
+    private OffsetDateTime createdAt;
+
+    @Column(name = &quot;updated_at&quot;, nullable = false)
+    private OffsetDateTime updatedAt;
+
+<span class="nc" id="L45">    protected Itinerary() {</span>
+        // requerido por JPA
+<span class="nc" id="L47">    }</span>
+
+    public Itinerary(String userName, String departureAirportId, String arrivalAirportId,
+<span class="fc" id="L50">                      LocalDate travelDate, Integer durationMinutes) {</span>
+<span class="fc" id="L51">        this.userName = userName;</span>
+<span class="fc" id="L52">        this.departureAirportId = departureAirportId;</span>
+<span class="fc" id="L53">        this.arrivalAirportId = arrivalAirportId;</span>
+<span class="fc" id="L54">        this.travelDate = travelDate;</span>
+<span class="fc" id="L55">        this.durationMinutes = durationMinutes;</span>
+<span class="fc" id="L56">    }</span>
+
+    public void update(String userName, String departureAirportId, String arrivalAirportId,
+                        LocalDate travelDate, Integer durationMinutes) {
+<span class="nc" id="L60">        this.userName = userName;</span>
+<span class="nc" id="L61">        this.departureAirportId = departureAirportId;</span>
+<span class="nc" id="L62">        this.arrivalAirportId = arrivalAirportId;</span>
+<span class="nc" id="L63">        this.travelDate = travelDate;</span>
+<span class="nc" id="L64">        this.durationMinutes = durationMinutes;</span>
+<span class="nc" id="L65">    }</span>
+
+    @PrePersist
+    void onCreate() {
+<span class="nc" id="L69">        OffsetDateTime now = OffsetDateTime.now();</span>
+<span class="nc" id="L70">        this.createdAt = now;</span>
+<span class="nc" id="L71">        this.updatedAt = now;</span>
+<span class="nc" id="L72">    }</span>
+
+    @PreUpdate
+    void onUpdate() {
+<span class="nc" id="L76">        this.updatedAt = OffsetDateTime.now();</span>
+<span class="nc" id="L77">    }</span>
+
+    // ---- getters ----
+
+    public Long getId() {
+<span class="fc" id="L82">        return id;</span>
+    }
+
+    public String getUserName() {
+<span class="fc" id="L86">        return userName;</span>
+    }
+
+    public String getDepartureAirportId() {
+<span class="fc" id="L90">        return departureAirportId;</span>
+    }
+
+    public String getArrivalAirportId() {
+<span class="fc" id="L94">        return arrivalAirportId;</span>
+    }
+
+    public LocalDate getTravelDate() {
+<span class="fc" id="L98">        return travelDate;</span>
+    }
+
+    public Integer getDurationMinutes() {
+<span class="fc" id="L102">        return durationMinutes;</span>
+    }
+
+    public OffsetDateTime getCreatedAt() {
+<span class="fc" id="L106">        return createdAt;</span>
+    }
+
+    public OffsetDateTime getUpdatedAt() {
+<span class="fc" id="L110">        return updatedAt;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

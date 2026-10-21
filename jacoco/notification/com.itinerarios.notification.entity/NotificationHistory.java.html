@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>NotificationHistory.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">notification-service</a> &gt; <a href="index.source.html" class="el_package">com.itinerarios.notification.entity</a> &gt; <span class="el_source">NotificationHistory.java</span></div><h1>NotificationHistory.java</h1><pre class="source lang-java linenums">package com.itinerarios.notification.entity;
+
+import jakarta.persistence.*;
+
+import java.time.OffsetDateTime;
+import java.util.UUID;
+
+/**
+ * Agregado del Notification Context. `itineraryId` es una referencia lógica
+ * a itinerary_db, sin FK real (sección 16 y 102 de la especificación maestra).
+ */
+@Entity
+@Table(name = &quot;notification_history&quot;)
+public class NotificationHistory {
+
+<span class="fc" id="L16">    public enum Status {</span>
+<span class="fc" id="L17">        SENT, FAILED</span>
+    }
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = &quot;event_id&quot;, nullable = false)
+    private UUID eventId;
+
+    @Column(name = &quot;itinerary_id&quot;, nullable = false)
+    private Long itineraryId;
+
+    @Column(name = &quot;user_name&quot;, nullable = false, length = 150)
+    private String userName;
+
+    @Column(name = &quot;notification_type&quot;, nullable = false, length = 50)
+    private String notificationType;
+
+    @Column(nullable = false, columnDefinition = &quot;TEXT&quot;)
+    private String message;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private Status status;
+
+    @Column(name = &quot;created_at&quot;, nullable = false, updatable = false)
+    private OffsetDateTime createdAt;
+
+    @Column(name = &quot;processed_at&quot;)
+    private OffsetDateTime processedAt;
+
+    @Column(name = &quot;error_message&quot;, columnDefinition = &quot;TEXT&quot;)
+    private String errorMessage;
+
+<span class="fc" id="L52">    protected NotificationHistory() {</span>
+        // requerido por JPA
+<span class="fc" id="L54">    }</span>
+
+    public static NotificationHistory sent(UUID eventId, Long itineraryId, String userName, String message) {
+<span class="fc" id="L57">        NotificationHistory history = new NotificationHistory();</span>
+<span class="fc" id="L58">        history.eventId = eventId;</span>
+<span class="fc" id="L59">        history.itineraryId = itineraryId;</span>
+<span class="fc" id="L60">        history.userName = userName;</span>
+<span class="fc" id="L61">        history.notificationType = &quot;ITINERARY_CREATED&quot;;</span>
+<span class="fc" id="L62">        history.message = message;</span>
+<span class="fc" id="L63">        history.status = Status.SENT;</span>
+<span class="fc" id="L64">        history.processedAt = OffsetDateTime.now();</span>
+<span class="fc" id="L65">        return history;</span>
+    }
+
+    public static NotificationHistory failed(UUID eventId, Long itineraryId, String userName, String errorMessage) {
+<span class="fc" id="L69">        NotificationHistory history = new NotificationHistory();</span>
+<span class="fc" id="L70">        history.eventId = eventId;</span>
+<span class="fc" id="L71">        history.itineraryId = itineraryId;</span>
+<span class="fc" id="L72">        history.userName = userName;</span>
+<span class="fc" id="L73">        history.notificationType = &quot;ITINERARY_CREATED&quot;;</span>
+<span class="fc" id="L74">        history.message = &quot;&quot;;</span>
+<span class="fc" id="L75">        history.status = Status.FAILED;</span>
+<span class="fc" id="L76">        history.processedAt = OffsetDateTime.now();</span>
+<span class="fc" id="L77">        history.errorMessage = errorMessage;</span>
+<span class="fc" id="L78">        return history;</span>
+    }
+
+    @PrePersist
+    void onCreate() {
+<span class="nc" id="L83">        this.createdAt = OffsetDateTime.now();</span>
+<span class="nc" id="L84">    }</span>
+
+    // ---- getters ----
+
+    public Long getId() {
+<span class="nc" id="L89">        return id;</span>
+    }
+
+    public UUID getEventId() {
+<span class="nc" id="L93">        return eventId;</span>
+    }
+
+    public Long getItineraryId() {
+<span class="fc" id="L97">        return itineraryId;</span>
+    }
+
+    public String getUserName() {
+<span class="fc" id="L101">        return userName;</span>
+    }
+
+    public String getNotificationType() {
+<span class="nc" id="L105">        return notificationType;</span>
+    }
+
+    public String getMessage() {
+<span class="fc" id="L109">        return message;</span>
+    }
+
+    public Status getStatus() {
+<span class="fc" id="L113">        return status;</span>
+    }
+
+    public OffsetDateTime getCreatedAt() {
+<span class="nc" id="L117">        return createdAt;</span>
+    }
+
+    public OffsetDateTime getProcessedAt() {
+<span class="nc" id="L121">        return processedAt;</span>
+    }
+
+    public String getErrorMessage() {
+<span class="fc" id="L125">        return errorMessage;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

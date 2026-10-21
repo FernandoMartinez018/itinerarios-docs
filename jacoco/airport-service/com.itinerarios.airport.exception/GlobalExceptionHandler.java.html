@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GlobalExceptionHandler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">airport-service</a> &gt; <a href="index.source.html" class="el_package">com.itinerarios.airport.exception</a> &gt; <span class="el_source">GlobalExceptionHandler.java</span></div><h1>GlobalExceptionHandler.java</h1><pre class="source lang-java linenums">package com.itinerarios.airport.exception;
+
+import com.itinerarios.airport.config.CorrelationIdFilter;
+import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+
+import java.time.OffsetDateTime;
+import java.util.stream.Collectors;
+
+@RestControllerAdvice
+<span class="fc" id="L20">public class GlobalExceptionHandler {</span>
+
+<span class="fc" id="L22">    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);</span>
+
+    @ExceptionHandler(AirportNotFoundException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleNotFound(AirportNotFoundException ex, HttpServletRequest request) {
+<span class="fc" id="L26">        return build(HttpStatus.NOT_FOUND, &quot;NOT_FOUND&quot;, ex.getMessage(), request);</span>
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
+<span class="fc" id="L31">        String message = ex.getBindingResult().getFieldErrors().stream()</span>
+<span class="fc" id="L32">                .map(fe -&gt; fe.getField() + &quot;: &quot; + fe.getDefaultMessage())</span>
+<span class="fc" id="L33">                .collect(Collectors.joining(&quot;; &quot;));</span>
+<span class="fc" id="L34">        return build(HttpStatus.BAD_REQUEST, &quot;VALIDATION_ERROR&quot;, message, request);</span>
+    }
+
+    @ExceptionHandler(ExternalProviderException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleExternalProvider(ExternalProviderException ex, HttpServletRequest request) {
+<span class="fc" id="L39">        return build(HttpStatus.BAD_GATEWAY, &quot;EXTERNAL_PROVIDER_ERROR&quot;, ex.getMessage(), request);</span>
+    }
+
+    @ExceptionHandler({MethodArgumentTypeMismatchException.class, HttpMessageNotReadableException.class})
+    public ResponseEntity&lt;ErrorResponse&gt; handleBadRequest(Exception ex, HttpServletRequest request) {
+<span class="fc" id="L44">        return build(HttpStatus.BAD_REQUEST, &quot;BAD_REQUEST&quot;, &quot;Malformed request&quot;, request);</span>
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleGeneric(Exception ex, HttpServletRequest request) {
+        // Errores propios de Spring MVC (ruta inexistente 404, metodo 405, media type 415...)
+        // traen su codigo: no deben convertirse en 500 (seccion 65).
+<span class="fc bfc" id="L51" title="All 2 branches covered.">        if (ex instanceof org.springframework.web.ErrorResponse springError) {</span>
+<span class="fc" id="L52">            HttpStatus status = HttpStatus.valueOf(springError.getStatusCode().value());</span>
+            // El detail de Spring es seguro y util (p. ej. &quot;Invalid API version: '3'.&quot;); no expone internos.
+<span class="fc" id="L54">            String detail = springError.getBody().getDetail();</span>
+<span class="pc bpc" id="L55" title="1 of 2 branches missed.">            return build(status, status.name(), detail != null ? detail : status.getReasonPhrase(), request);</span>
+        }
+<span class="fc" id="L57">        log.error(&quot;Unhandled error on {}&quot;, request.getRequestURI(), ex);</span>
+<span class="fc" id="L58">        return build(HttpStatus.INTERNAL_SERVER_ERROR, &quot;INTERNAL_SERVER_ERROR&quot;, &quot;Unexpected error&quot;, request);</span>
+    }
+
+    private ResponseEntity&lt;ErrorResponse&gt; build(HttpStatus status, String error, String message, HttpServletRequest request) {
+<span class="fc" id="L62">        String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);</span>
+<span class="fc" id="L63">        ErrorResponse body = new ErrorResponse(</span>
+<span class="fc" id="L64">                OffsetDateTime.now(),</span>
+<span class="fc" id="L65">                status.value(),</span>
+                error,
+                message,
+<span class="fc" id="L68">                request.getRequestURI(),</span>
+                correlationId
+        );
+<span class="fc" id="L71">        return ResponseEntity.status(status).body(body);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>
