@@ -1,44 +1,110 @@
 @startuml overview
-title Arquitectura general — Sistema de Itinerarios Personales (Nivel 1)
+title Arquitectura general — Sistema de Itinerarios Personales (Niveles 1-3)
 
 skinparam componentStyle rectangle
+skinparam shadowing false
+skinparam defaultTextAlignment center
+skinparam ArrowColor #444444
+skinparam package {
+  BorderColor #888888
+}
 
-actor Usuario
+actor "Usuario" as Usuario
 
 package "itinerarios-frontend" {
-  [Angular SPA]
+  component "nginx\n(mismo origen)" as Nginx
+  component "Angular SPA\n+ Plotly" as Spa
 }
 
-package "itinerarios-gateway" {
-  [Spring Cloud Gateway]
+package "itinerarios-gateway  (BFF, ADR-018)" {
+  component "Spring Cloud Gateway\nrouting · CORS · rate limit\nCorrelation ID · CSRF" as Gateway
+  component "oauth2Login\n(sesión, /auth/me)" as Bff
+  component "Token de servicio\n(Client Credentials)" as SvcToken
 }
+
+component "Keycloak\nrealm itinerarios" as Keycloak
 
 package "itinerarios-airport-service" {
-  [Airport Service]
+  component "Airport Service\n(resource server)" as Airport
+  component "ColombiaAirportAdapter\nRetry · Circuit Breaker" as Adapter
 }
 
 package "itinerarios-itinerary-service" {
-  [Itinerary Service]
+  component "Itinerary Service\n(resource server)" as Itinerary
+  component "AirportServiceClient\nRetry · CB · Bulkhead" as AirportClient
+  component "Outbox Publisher" as Outbox
 }
 
+package "itinerarios-notification" {
+  component "Notification Service\n(resource server)" as Notification
+  component "SendNotificationFunction\n(AWS Lambda, mismo processor)" as Lambda
+}
+
+queue "RabbitMQ\nItineraryCreatedEvent" as Rabbit
+database "Redis\n(caché aeropuertos)" as Redis
+database "airport_db" as AirportDb
+database "itinerary_db\n+ outbox_events" as ItineraryDb
+database "notification_db" as NotificationDb
 cloud "API Colombia" as ApiColombia
 
-database "airport_db" as AirportDb
-database "itinerary_db" as ItineraryDb
+package "Observabilidad" {
+  component "OpenTelemetry\n(agente Java)" as Otel
+  component "Jaeger" as Jaeger
+  component "Prometheus\n+ reglas de alerta" as Prometheus
+  component "Grafana" as Grafana
+}
 
-Usuario --> [Angular SPA]
-[Angular SPA] --> [Spring Cloud Gateway] : único punto de entrada
-[Spring Cloud Gateway] --> [Airport Service]
-[Spring Cloud Gateway] --> [Itinerary Service]
-[Itinerary Service] --> [Airport Service] : validación HTTP
-[Airport Service] --> AirportDb
-[Airport Service] --> ApiColombia
-[Itinerary Service] --> ItineraryDb
+' --- Entrada del usuario
+Usuario --> Nginx : HTTP
+Nginx --> Spa : estáticos
+Nginx --> Gateway : /api, /auth, /oauth2,\n/login/oauth2, /logout
+Nginx --> Keycloak : /realms (pantalla de login)
 
-note bottom
-  itinerarios-notification (Notification Context) se agrega en Nivel 2
-  junto con RabbitMQ, Redis y observabilidad. No forma parte de este
-  diagrama de Nivel 1.
+' --- Seguridad
+Gateway *-- Bff
+Gateway *-- SvcToken
+Bff ..> Keycloak : Authorization Code + PKCE\n(tokens quedan en el Gateway)
+SvcToken ..> Keycloak : client_credentials
+AirportClient ..> Keycloak : client_credentials\n(itinerary-service)
+
+' --- Negocio (Bearer de servicio, sin cookie)
+Gateway --> Airport : /api/airports
+Gateway --> Itinerary : /api/itineraries
+Gateway --> Notification : /api/notifications
+
+Airport --> Adapter
+Adapter --> ApiColombia : HTTPS
+Airport --> Redis : cache (sin errores)
+Airport --> AirportDb
+
+Itinerary --> AirportClient
+AirportClient --> Airport : validación HTTP de IATA\n(scope airport.read)
+Itinerary --> ItineraryDb : itinerario + evento\nmisma transacción
+Outbox --> ItineraryDb : lee pendientes
+Outbox --> Rabbit : publica
+
+Rabbit --> Notification : consume
+Notification --> NotificationDb : historial\n(idempotente por event_id)
+Lambda --> NotificationDb : idempotente por event_id
+
+' --- Observabilidad
+Otel ..> Jaeger : trazas OTLP
+Prometheus ..> Gateway : /actuator/prometheus
+Prometheus ..> Airport
+Prometheus ..> Itinerary
+Prometheus ..> Notification
+Grafana --> Prometheus
+
+note right of Gateway
+  Sin lógica de negocio (§33).
+  /api/** exige sesión (401 sin ella).
+  No reenvía la cookie a los servicios.
+end note
+
+note bottom of Rabbit
+  Transactional Outbox (ADR-008):
+  el evento se guarda con el itinerario
+  y se publica después con backoff.
 end note
 
 @enduml
