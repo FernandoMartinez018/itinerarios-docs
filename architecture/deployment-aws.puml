@@ -1,0 +1,86 @@
+@startuml deployment-aws
+title Despliegue en AWS (us-east-1) — stacks CloudFormation 00-06
+
+skinparam shadowing false
+skinparam defaultTextAlignment center
+skinparam ArrowColor #444444
+
+actor "Usuario\n(IP en AdminCidr)" as Usuario
+node "GitHub Actions\n(build-test → push-image)" as Gha
+cloud "GitHub Pages\n(JaCoCo + Selenium)" as Pages
+node "publish-reports.sh\n(local)" as Pub
+cloud "API Colombia" as ApiColombia
+
+rectangle "Cuenta AWS" {
+  node "IAM OIDC (01)\nrol mínimo privilegio" as Oidc
+  database "ECR (02)\nitinerarios-*" as Ecr
+  node "SSM Parameter Store\n/itinerarios/*" as Ssm
+  node "Budget (00)\nUSD 20 + alertas" as Budget
+
+  rectangle "VPC (03) — 2 subredes públicas, sin NAT\nSG: solo AdminCidr / AdminCidr2" {
+    rectangle "ECS Fargate (05) — Cloud Map *.itinerarios.local" {
+      node "frontend\nnginx :80" as Fe
+      node "gateway :8080" as Gw
+      node "keycloak :8080\n(modo start)" as Kc
+      node "airport-service :8081" as Ap
+      node "itinerary-service :8082" as It
+      node "notification-service :8083" as No
+      node "rabbitmq" as Rq
+      node "redis" as Rd
+      node "jaeger :16686" as Ja
+      node "prometheus :9090" as Pr
+      node "grafana :3000" as Gr
+    }
+    database "RDS PostgreSQL 16 (04)\nairport_db · itinerary_db\nnotification_db · keycloak_db" as Rds
+    node "Lambda java21 (06)\nSendNotificationFunction" as Lam
+  }
+}
+
+Gha --> Oidc : AssumeRoleWithWebIdentity
+Gha --> Ecr : push imagen :sha y :latest
+Pub --> Pages : gh-pages
+
+Usuario --> Fe : HTTP :80
+Usuario ..> Gr : :3000
+Usuario ..> Pr : :9090
+Usuario ..> Ja : :16686
+
+Fe --> Gw : /api, /auth, /oauth2, /logout
+Fe --> Kc : /realms
+Gw --> Kc : tokens (backchannel)
+Gw --> Ap
+Gw --> It
+Gw --> No
+It --> Ap : validación IATA
+It --> Rq : Outbox
+Rq --> No
+Ap --> Rd
+Ap --> ApiColombia : HTTPS
+Ap --> Rds
+It --> Rds
+No --> Rds
+Kc --> Rds
+Lam --> Rds
+
+Ap ..> Ja : OTLP
+It ..> Ja : OTLP
+No ..> Ja : OTLP
+Gw ..> Ja : OTLP
+Pr ..> Gw : scrape
+Pr ..> Ap : scrape
+Pr ..> It : scrape
+Pr ..> No : scrape
+Gr --> Pr
+
+Ecr ..> Fe : imágenes
+Ssm ..> Kc : realm (2 partes) y secretos
+Ssm ..> Pr : prometheus.yml, alertas
+Ssm ..> Gr : datasource, dashboard
+
+note bottom of Rds
+  Cuenta sin créditos (ADR-017): se enciende para probar
+  y se apaga con run-cloud-tests.sh --down.
+  RabbitMQ como contenedor (Amazon MQ ≈ USD 100/mes).
+end note
+
+@enduml
